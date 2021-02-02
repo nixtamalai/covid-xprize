@@ -54,7 +54,8 @@ app.layout = html.Div(children=[
                     data=[pareto_data],
                     layout={"title": {"text": "Pareto plot"}, 
                             "xaxis": {"title": "Mean Stringency"},
-                            "yaxis": {"title": "Mean New Cases per Day"} }
+                            "yaxis": {"title": "Mean New Cases per Day"},
+                            "legend":{"yanchor": "top","y": 0.99, "x": 0.8}}
                 )
             )
     ],
