@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
+import plotly.express as px
 import urllib
 from os import path
+from covid_xprize.scoring.prescriptor_scoring import compute_pareto_set
 
 CUR_DIRECTORY_PATH = path.abspath(path.dirname(__file__))
 DATA_PATH = path.join(path.split(CUR_DIRECTORY_PATH)[0], 'data_sources')

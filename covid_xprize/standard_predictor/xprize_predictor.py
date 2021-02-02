@@ -246,6 +246,22 @@ class XPrizePredictor(object):
         return latest_df
 
     @staticmethod
+    def load_original_data_from_df(ips_df):
+        # latest_df = pd.read_csv(data_url,
+        #                         parse_dates=['Date'],
+        #                         encoding="ISO-8859-1",
+        #                         dtype={"RegionName": str,
+        #                                "RegionCode": str},
+        #                         error_bad_lines=False)
+        # GeoID is CountryName / RegionName
+        # np.where usage: if A then B else C
+        ips_df["GeoID"] = np.where(ips_df["RegionName"].isnull(),
+                                      ips_df["CountryName"],
+                                      ips_df["CountryName"] + ' / ' + ips_df["RegionName"])
+        ips_df["Date"] = pd.to_datetime(ips_df["Date"])
+        return ips_df
+
+    @staticmethod
     def _fill_missing_values(df):
         """
         # Fill missing values by interpolation, ffill, and filling NaNs

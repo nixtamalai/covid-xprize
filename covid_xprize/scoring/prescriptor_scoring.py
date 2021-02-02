@@ -26,6 +26,7 @@ def generate_cases_and_stringency_for_prescriptions(start_date, end_date, prescr
     pred_dfs = {}
     for idx in pres_df['PrescriptionIndex'].unique():
         idx_df = pres_df[pres_df['PrescriptionIndex'] == idx]
+        print(idx_df.head())
         idx_df = idx_df.drop(columns='PrescriptionIndex')  # Predictor doesn't need this
         # Generate the predictions
         pred_df = predictor.predict_from_df(start_date, end_date, idx_df)
