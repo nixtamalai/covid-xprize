@@ -22,9 +22,13 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 START_DATE = "2020-08-01"
 END_DATE = "2020-08-05"
 TEST_COST = "covid_xprize/validation/data/uniform_random_costs.csv"
+COUNTRY = "Mexico"
+# Este escenario sólo trae a México, por eso sólo se modela ese geo. Esto tendría que cambiar
 IP_FILE = "prescriptions/robojudge_test_scenario.csv"
 
 weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
+# Filtro por el país "seleccionado"
+weights_df = weights_df[weights_df.CountryName == "Mexico"]
 overall_pdf = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df)
 pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
@@ -33,7 +37,7 @@ pareto_data = {"x": pareto[0],
                "name": "Base Prescriptor"
                }
 # valores de pesos para popular los sliders
-npis = (pd.read_csv(TEST_COST)
+npis = (weights_df
         .drop(columns=['CountryName', 'RegionName'])
         .to_dict(orient='records'))[0]
 costs = npi_val_to_cost(npis)

@@ -23,11 +23,11 @@ IP_MAX_VALUES = {
 }
 
 def npi_val_to_cost(vals:dict):
-    costs = {k: round(float(vals[k])/IP_MAX_VALUES[k],1) for k in vals.keys()}
+    costs = {k: float(vals[k])/IP_MAX_VALUES[k] for k in vals.keys()}
     return costs
 
 def npi_cost_to_val(costs:dict):
-    vals = {k: ([round(costs[k][0]*IP_MAX_VALUES[k])]
+    vals = {k: ([costs[k][0]*IP_MAX_VALUES[k]]
                 if k not in ['CountryName', 'RegionName'] else costs[k]) for k in costs.keys()}
     return vals
 
