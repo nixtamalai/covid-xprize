@@ -21,30 +21,42 @@ TEMPLATE = "ggplot2"
 
 
 START_DATE = "2020-08-01"
-END_DATE = "2020-08-05"
+END_DATE = "2020-09-01"
 TEST_COST = "covid_xprize/validation/data/uniform_random_costs.csv"
 COUNTRY = "Mexico"
 # Este escenario sólo trae a México, por eso sólo se modela ese geo. Esto tendría que cambiar
 IP_FILE = "prescriptions/robojudge_test_scenario.csv"
+DEFAULT_COLORS = [
+    '#1f77b4',  # muted blue
+    '#ff7f0e',  # safety orange
+    '#2ca02c',  # cooked asparagus green
+    '#d62728',  # brick red
+    '#9467bd',  # muted purple
+    '#8c564b',  # chestnut brown
+    '#e377c2',  # raspberry yogurt pink
+    '#7f7f7f',  # middle gray
+    '#bcbd22',  # curry yellow-green
+    '#17becf'   # blue-teal
+]
 
 weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
 # Filtro por el país "seleccionado"
 weights_df = weights_df[weights_df.CountryName == "Mexico"]
-overall_pdf = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df)
+overall_pdf, predictions = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df)
+# Gráfica inicial de Pareto
 pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
-radar = go.Figure()
 pareto_data = {"x": pareto[0],
                "y": pareto[1],
                "name": "Base Prescriptor",
                "showlegend": True,
                }
-
 # valores de pesos para popular los sliders
 npis = (weights_df
         .drop(columns=['CountryName', 'RegionName'])
         .to_dict(orient='records'))[0]
 BASE_COSTS = npi_val_to_cost(npis)
+# Gráfica inicial de radar
 radar_data = {
     "r": [v for _,v in BASE_COSTS.items()],
     "theta": [k.split("_")[0] for k,_ in BASE_COSTS.items()],
@@ -52,15 +64,31 @@ radar_data = {
     'type': 'scatterpolar',
     "showlegend": True,
 }
+# Gráfica inicial  de predicciones
+predictions = pd.concat(predictions)
+fig_predictions = go.Figure()
+for idx in predictions.PrescriptionIndex.unique():
+    display_legend = True if idx == 0 else False
+    idf = predictions[predictions.PrescriptionIndex == idx]
+    fig_predictions.add_trace(
+        go.Scatter(
+            x=idf["Date"],
+            y=idf["PredictedDailyNewCases"],
+            mode='lines', line=dict(color=DEFAULT_COLORS[1]),
+            name="Base prescription",
+            legendgroup="group_0",
+            showlegend=display_legend
+        )
+    )
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div(children=[
     html.H1(children='Visualizing Intervention Plans'),
 
-    html.Div(children='''
-        XPRIZE
-    '''),
+    # html.Div(children='''
+    #     XPRIZE
+    # '''),
     html.Div(
         children =[
             deg.ExtendableGraph(
@@ -74,10 +102,20 @@ app.layout = html.Div(children=[
                             "template": TEMPLATE
                             }
                 ))
-            )
+            )       
     ],
-    style={'width': '60%', 'height':'50%', 'display': 'inline-block'}
+    style={'width': '50%', 'height':'50%', 'display': 'inline-block',"float":"left" }
     ),
+    html.Div(
+        children =[
+            deg.ExtendableGraph(
+                id='predictions-plot',
+                figure=fig_predictions
+            )       
+    ],
+    style={'width': '50%', 'height':'50%', "float":"left"}
+    ),
+
     html.Div(
         children =[
             html.P(children=dcc.Markdown("School closing (**C1**)")),
@@ -144,9 +182,11 @@ app.layout = html.Div(children=[
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
-            )],
+            ),
+            html.Button('Reset', id='reset-val', n_clicks=0)
+            ],
             style={'width': '20%', 'height':'30%','display': 'inline-block',
-                   "background-color": "rgb(237, 237, 237)"}),
+                   "background-color": "rgb(237, 237, 237)", "margin-left":"60px"}),
     html.Div(
         children=[
             html.P(children=dcc.Markdown("Restrictions on internal movement (**C7**)")),
@@ -214,15 +254,16 @@ app.layout = html.Div(children=[
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
-            )
+            ),
+            html.Button('Submit', id='submit-val', n_clicks=0)
     ],
     style={'width': '20%', 'height':'30%','display': 'inline-block', 'margin-top':0,
            "background-color": "rgb(237, 237, 237)"}
     ),
-    html.Div(
-        children=[html.Button('Submit', id='submit-val', n_clicks=0)],
-        style={'display': 'inline-block', "float":"right"}
-    ),
+    # html.Div(
+    #     children=[html.Button('Submit', id='submit-val', n_clicks=0)],
+    #     style={'display': 'inline-block', "float":"right"}
+    # ),
     html.Div(
         children=[deg.ExtendableGraph(
             id='radar-plot',
@@ -237,7 +278,8 @@ app.layout = html.Div(children=[
 ])
 
 
-@app.callback(dash.dependencies.Output('pareto-plot', 'extendData'),
+@app.callback([dash.dependencies.Output('pareto-plot', 'extendData'),
+               dash.dependencies.Output('predictions-plot', 'extendData')],
                [dash.dependencies.Input('submit-val', 'n_clicks')],
                [dash.dependencies.State('C1-weight', 'value')],
                [dash.dependencies.State('C2-weight', 'value')],
@@ -274,14 +316,32 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
         }
         weights_dict = npi_cost_to_val(weights_dict)
         user_weights = pd.DataFrame.from_dict(weights_dict)
-        overall_pdf = get_overall_data(
+        overall_pdf, predictions = get_overall_data(
             START_DATE, END_DATE, IP_FILE, user_weights)
         pareto = get_pareto_data(list(overall_pdf['Stringency']),
                                  list(overall_pdf['PredictedDailyNewCases']))
         new_trace = {"x": pareto[0],
                      "y": pareto[1],
-                     "name": "User prescription {}".format(n_clicks)}        
-        return [new_trace, []], []
+                     "name": "User prescription {}".format(n_clicks)}
+        predictions = pd.concat(predictions)
+        prediction_traces = []
+        for idx in predictions.PrescriptionIndex.unique():
+            display_legend = True if idx == 0 else False
+            idf = predictions[predictions.PrescriptionIndex == idx]
+            trace = {"x": idf["Date"],
+                     "y": idf["PredictedDailyNewCases"],
+                     "mode": "lines",
+                     "line": dict(color=DEFAULT_COLORS[n_clicks + 1]),
+                     "name": "User prescription {}".format(n_clicks),
+                     "legendgroup": "group_{}".format(n_clicks),
+                     "showlegend": display_legend
+                    }
+            prediction_traces.append(trace)
+            # fig_predictions.add_trace(go.Scatter(x=idf["Date"], y=idf["PredictedDailyNewCases"],
+            #                 mode='lines',line=dict(color=DEFAULT_COLORS[1])))
+ 
+        return ([new_trace, []], []), (([prediction_traces, []], []))
+    return ([],[],[]), ([],[],[])
 
 @app.callback(dash.dependencies.Output('radar-plot', 'extendData'),
                [dash.dependencies.Input('submit-val', 'n_clicks')],
