@@ -1,14 +1,20 @@
 import pandas as pd
 import os
 from glob import glob
+from pandas.core.frame import DataFrame
 from tqdm import tqdm
 import numpy as np
 from numpy.random import randint
 from typing import Union, Tuple
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.base import RegressorMixin
+from collections import OrderedDict
 from copy import deepcopy
+from covid_xprize.nixtamalai.helpers import add_geo_id
+from covid_xprize.nixtamalai.analyze_predictor import IP_COLS
+from microtc.utils import load_model
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+NUM_PRESCRIPTIONS = 10
 
 
 # Faster than is_pareto_efficient_simple, but less readable.
@@ -40,7 +46,7 @@ def is_pareto_efficient(costs, return_mask = True):
 
     
 def prescription_cases(output: Union[str, None] = "presc-cases.csv") -> pd.DataFrame:
-    FILES = glob(os.path.join(ROOT_DIR, "..", "..", "prescriptions/*2020-08-01.csv"))
+    FILES = glob(os.path.join(ROOT_DIR, "..", "..", "prescriptions/*2021-01-28.csv"))
     FILES.sort()
     prescriptions = {os.path.basename(fname).split("-")[0]:
                      pd.read_csv(fname, parse_dates=["Date"], index_col=["Date"])
@@ -146,6 +152,63 @@ class SHC(object):
         return res
 
 
+class MSHC(SHC):
+    def __init__(self, weights: np.ndarray,
+                 npis_pf: list,
+                 hist: set,
+                 **kwargs) -> None:
+        super(MSHC, self).__init__(**kwargs)
+        self._weights = weights
+        self._npis_pf = npis_pf
+        self._visited = hist
+
+    @property
+    def weights(self):
+        return self._weights
+
+    def fitness(self, element: np.ndarray) -> np.ndarray:
+        _ = np.atleast_2d(element)
+        cases = self.regressor.predict(_)
+        cost = (self.weights * _).sum(axis=1)
+        return np.vstack([cases, cost]).T
+
+    def fit(self, X, y):
+        self.regressor.fit(X, y)
+        points = list(self._npis_pf.keys())
+        for point in points:
+            if point not in self._npis_pf:
+                continue
+            self.iter(point)
+        return self
+
+    def iter(self, point):
+        fit = self._npis_pf[point]
+        for _ in range(100):
+            point = list(map(int, point))
+            neighbors = self.neighbors(np.array(point))
+            if len(neighbors) == 0:
+                return
+            fits = self.fitness(neighbors)
+            index = is_pareto_efficient(np.vstack([fit, fits]),
+                                        return_mask=False)
+            if index.shape[0] == 1 and index[0] == 0:
+                return
+            elif index.shape[0] > 1:
+                index = index[1:]
+                np.random.shuffle(index)
+            for i in index:
+                key = "".join(map(str, neighbors[i-1]))
+                self._npis_pf[key] = fits[i-1].tolist()
+            _ = is_pareto_efficient(np.array(list(self._npis_pf.values())))
+            keys = list(self._npis_pf.keys())
+            for k, flag in zip(keys, _):
+                if not flag:
+                    del self._npis_pf[k]
+            point = neighbors[index[0] - 1]
+            point = "".join(map(str, point))
+            fit = fits[index[0] - 1]
+
+
 def run(index):
     from microtc.utils import save_model
     df = prescription_cases()
@@ -163,7 +226,93 @@ def run(index):
                os.path.join(ROOT_DIR, "prescriptions", str(index) + ".pickle.gz"))
 
 
-if __name__ == "__main__":
+def _policy(args):
+    weights, country, country_id, X, y = args
+    w = weights.loc[weights.GeoID == country, IP_COLS].values
+    # GeoID = weights.GeoID.values.copy()
+    # GeoID.sort()
+    # regions_id = {v: k for k, v in enumerate(GeoID)}
+    prescriptions_path = os.path.join(ROOT_DIR,
+                                      "2021-01-28-prescriptions/%s.pickle.gz" % country_id)
+    presc = load_model(prescriptions_path)
+    cost = {k: [v, (np.array([int(i) for i in k]) * w).sum()] for k, v in presc.items()}
+    npis = list(cost.keys())
+    npis.sort(key=lambda x: cost[x][0])
+    _ = np.array([cost[k] for k in npis])
+    index = is_pareto_efficient(_, return_mask=False)
+    _ = OrderedDict()
+    for x in index:
+        key = npis[x]
+        _[key] = cost[key]
+    mshc = MSHC(w, _, set(npis),
+            regressor=RandomForestRegressor()).fit(X, y)
+    ss = list(mshc._npis_pf.items())
+    ss.sort(key=lambda x: x[1][0])
+    if len(ss) > 10:
+        ind2 = np.linspace(1, len(ss) -2, 10).round().astype(np.int)
+        npis = [ss[i][0] for i in ind2]
+    else:
+        npis = [x[0] for x in ss]
+    return [country, npis]
+
+
+def policy(weights):
+    from multiprocessing import Pool, cpu_count
+    add_geo_id(weights)
+    w_regions = set(weights.GeoID)
+    df = prescription_cases()
+    regions = df.columns.sort_values()
+    args = [training_set(df, region) for region in regions]
+    args = [(weights, country, country_id, X, y)
+            for country, (X, y), country_id in zip(regions, args,
+                                                   range(len(regions))) if country in w_regions]    
+    res = dict()
+    with Pool(cpu_count()) as pool:
+        for k, v in tqdm(pool.imap_unordered(_policy, args), total=len(args)):
+            res[k] = v
+    return res
+
+
+def prescribe(start_date_str: str,
+              end_date_str: str,
+              path_to_hist_file: str,
+              weigths: np.ndarray) -> pd.DataFrame:
+
+    # Generate prescriptions
+    presc = policy(weigths)
+
+    start_date = pd.to_datetime(start_date_str, format='%Y-%m-%d')
+    end_date = pd.to_datetime(end_date_str, format='%Y-%m-%d')
+    prescription_dict = {
+        'CountryName': [],
+        'RegionName': [],
+        'Date': [],
+        'PrescriptionIndex': []
+    }
+
+    for ip in IP_COLS:
+        prescription_dict[ip] = []
+
+    for geoid, df in weigths.groupby("GeoID"):
+        country_name = df.iloc[0].CountryName
+        region_name = df.iloc[0].RegionName
+        data = presc[geoid]
+        if len(data) < NUM_PRESCRIPTIONS:
+            data += [data[0] for _ in range(len(data), NUM_PRESCRIPTIONS)]
+        for prescription_idx, prescriptor in enumerate(data):
+            for date in pd.date_range(start_date, end_date):
+                date_str = date.strftime("%Y-%m-%d")
+                prescription_dict['CountryName'].append(country_name)
+                prescription_dict['RegionName'].append(region_name)
+                prescription_dict['Date'].append(date_str)
+                prescription_dict['PrescriptionIndex'].append(prescription_idx)
+                for npi, value in zip(IP_COLS, prescriptor):
+                    prescription_dict[npi].append(int(value))
+
+    return pd.DataFrame(prescription_dict)
+
+
+if __name__ == "__main__" and False:
     from multiprocessing import Pool, cpu_count
     df = prescription_cases()
     cols = list(df.columns)
