@@ -8,6 +8,7 @@ import dash_extendable_graph as deg
 import plotly.graph_objects as go
 import dash_html_components as html
 import plotly.express as px
+import plotly.io as pio
 from covid_xprize.nixtamalai.viz_components import get_pareto_data
 from covid_xprize.nixtamalai.viz_components import npi_val_to_cost
 from covid_xprize.nixtamalai.viz_components import get_overall_data
@@ -15,9 +16,8 @@ from covid_xprize.nixtamalai.viz_components import npi_cost_to_val
 import palettable as pltt
 
 
-
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
+TEMPLATE = "ggplot2"
 
 
 START_DATE = "2020-08-01"
@@ -37,7 +37,7 @@ radar = go.Figure()
 pareto_data = {"x": pareto[0],
                "y": pareto[1],
                "name": "Base Prescriptor",
-               "showlegend": True
+               "showlegend": True,
                }
 
 # valores de pesos para popular los sliders
@@ -50,7 +50,7 @@ radar_data = {
     "theta": [k.split("_")[0] for k,_ in BASE_COSTS.items()],
     "name": "Base Prescriptor",
     'type': 'scatterpolar',
-    "showlegend": True
+    "showlegend": True,
 }
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -65,13 +65,15 @@ app.layout = html.Div(children=[
         children =[
             deg.ExtendableGraph(
                 id='pareto-plot',
-                figure=dict(
+                figure=go.Figure(dict(
                     data=[pareto_data],
                     layout={"title": {"text": "Pareto plot"}, 
                             "xaxis": {"title": "Mean Stringency"},
                             "yaxis": {"title": "Mean New Cases per Day"},
-                            "legend":{"yanchor": "top","y": 0.99, "x": 0.8}}
-                )
+                            "legend":{"yanchor": "top","y": 0.99, "x": 0.8},
+                            "template": TEMPLATE
+                            }
+                ))
             )
     ],
     style={'width': '60%', 'height':'50%', 'display': 'inline-block'}
@@ -143,7 +145,8 @@ app.layout = html.Div(children=[
                 tooltip = { 'always_visible': False }
 
             )],
-            style={'width': '20%', 'height':'30%','display': 'inline-block'}),
+            style={'width': '20%', 'height':'30%','display': 'inline-block',
+                   "background-color": "rgb(237, 237, 237)"}),
     html.Div(
         children=[
             html.P(children=dcc.Markdown("Restrictions on internal movement (**C7**)")),
@@ -213,7 +216,8 @@ app.layout = html.Div(children=[
 
             )
     ],
-    style={'width': '20%', 'height':'30%','display': 'inline-block', 'margin-top':0}
+    style={'width': '20%', 'height':'30%','display': 'inline-block', 'margin-top':0,
+           "background-color": "rgb(237, 237, 237)"}
     ),
     html.Div(
         children=[html.Button('Submit', id='submit-val', n_clicks=0)],
@@ -222,11 +226,13 @@ app.layout = html.Div(children=[
     html.Div(
         children=[deg.ExtendableGraph(
             id='radar-plot',
-            figure=dict(
-                    data=[radar_data],
-                )
+            figure=go.Figure(dict(
+                data=[radar_data],
+                layout={"title": {"text": "NPI Weights"},
+                        "template": TEMPLATE}
+            ))
         )],
-        style={'width': '35%', 'display': 'inline-block', "float":"right"}
+        style={'width': '35%', 'display': 'inline-block', "float": "right"}
     ),
 ])
 

@@ -5,7 +5,6 @@ from covid_xprize.nixtamalai.prescriptors import get_greedy_prescription_df
 from covid_xprize.nixtamalai.prescriptors import generate_cases_and_stringency_for_prescriptions
 
 
-
 # No entiendo muy bien estos max values, la verdad
 IP_MAX_VALUES = {
     'C1_School closing': 3,
