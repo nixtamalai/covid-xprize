@@ -5,6 +5,7 @@ import pandas as pd
 import dash
 import dash_core_components as dcc
 import dash_extendable_graph as deg
+import plotly.graph_objects as go
 import dash_html_components as html
 import plotly.express as px
 from covid_xprize.nixtamalai.viz_components import get_pareto_data
@@ -32,15 +33,25 @@ weights_df = weights_df[weights_df.CountryName == "Mexico"]
 overall_pdf = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df)
 pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
+radar = go.Figure()
 pareto_data = {"x": pareto[0],
                "y": pareto[1],
-               "name": "Base Prescriptor"
+               "name": "Base Prescriptor",
+               "showlegend": True
                }
+
 # valores de pesos para popular los sliders
 npis = (weights_df
         .drop(columns=['CountryName', 'RegionName'])
         .to_dict(orient='records'))[0]
-costs = npi_val_to_cost(npis)
+BASE_COSTS = npi_val_to_cost(npis)
+radar_data = {
+    "r": [v for _,v in BASE_COSTS.items()],
+    "theta": [k.split("_")[0] for k,_ in BASE_COSTS.items()],
+    "name": "Base Prescriptor",
+    'type': 'scatterpolar',
+    "showlegend": True
+}
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
@@ -67,149 +78,156 @@ app.layout = html.Div(children=[
     ),
     html.Div(
         children =[
-            html.P(children="School closing"),
+            html.P(children=dcc.Markdown("School closing (**C1**)")),
             dcc.Slider(
                 id='C1-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C1_School closing'],
+                value=BASE_COSTS['C1_School closing'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
             ),
-            html.P(children="Workplace closing"),
+            html.P(children=dcc.Markdown("Workplace closing (**C2**)")),
             dcc.Slider(
                 id='C2-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C2_Workplace closing'],
+                value=BASE_COSTS['C2_Workplace closing'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Cancel public events"),
+            html.P(children=dcc.Markdown("Cancel public events (**C3**)")),
             dcc.Slider(
                 id='C3-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C3_Cancel public events'],
+                value=BASE_COSTS['C3_Cancel public events'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Restrictions on gathering"),
+            html.P(children=dcc.Markdown("Restrictions on gathering (**C4**)")),
             dcc.Slider(
                 id='C4-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C4_Restrictions on gatherings'],
+                value=BASE_COSTS['C4_Restrictions on gatherings'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Close public transport"),
+            html.P(children=dcc.Markdown("Close public transport (**C5**)")),
             dcc.Slider(
                 id='C5-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C5_Close public transport'],
+                value=BASE_COSTS['C5_Close public transport'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Stay at home requirements"),
+            html.P(children=dcc.Markdown("Stay at home requirements (**C6**)")),
             dcc.Slider(
                 id='C6-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C6_Stay at home requirements'],
+                value=BASE_COSTS['C6_Stay at home requirements'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             )],
-            style={'width': '20%', 'display': 'inline-block'}),
+            style={'width': '20%', 'height':'30%','display': 'inline-block'}),
     html.Div(
         children=[
-            html.P(children="Restrictions on internal movement"),
+            html.P(children=dcc.Markdown("Restrictions on internal movement (**C7**)")),
             dcc.Slider(
                 id='C7-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C7_Restrictions on internal movement'],
+                value=BASE_COSTS['C7_Restrictions on internal movement'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="International travel conrols"),
+            html.P(children=dcc.Markdown("International travel conrols (**C8**)")),
             dcc.Slider(
                 id='C8-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['C8_International travel controls'],
+                value=BASE_COSTS['C8_International travel controls'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Public information campaigns"),
+            html.P(children=dcc.Markdown("Public information campaigns (**H1**)")),
             dcc.Slider(
                 id='H1-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['H1_Public information campaigns'],
+                value=BASE_COSTS['H1_Public information campaigns'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Testing policy"),
+            html.P(children=dcc.Markdown("Testing policy (**H2**)")),
             dcc.Slider(
                 id='H2-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['H2_Testing policy'],
+                value=BASE_COSTS['H2_Testing policy'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Contact tracing"),
+            html.P(children=dcc.Markdown("Contact tracing (**H3**)")),
             dcc.Slider(
                 id='H3-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['H3_Contact tracing'],
+                value=BASE_COSTS['H3_Contact tracing'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             ),
-            html.P(children="Facial coverings"),
+            html.P(children=dcc.Markdown("Facial coverings (**H4**)")),
             dcc.Slider(
                 id='H4-weight',
                 min=0,
                 max=1,
                 step=0.1,
-                value=costs['H6_Facial Coverings'],
+                value=BASE_COSTS['H6_Facial Coverings'],
                 marks = {0:"0", 0.5:"0.5", 1: "1"},
                 tooltip = { 'always_visible': False }
 
             )
     ],
-    style={'width': '20%', 'display': 'inline-block', 'margin-top':0}
+    style={'width': '20%', 'height':'30%','display': 'inline-block', 'margin-top':0}
     ),
     html.Div(
         children=[html.Button('Submit', id='submit-val', n_clicks=0)],
-        style={'width': '20%', 'display': 'inline-block', "float":"right"}
+        style={'display': 'inline-block', "float":"right"}
     ),
-    # html.Div(id='container-button-basic',
-    #          children='Enter a value and press submit')
+    html.Div(
+        children=[deg.ExtendableGraph(
+            id='radar-plot',
+            figure=dict(
+                    data=[radar_data],
+                )
+        )],
+        style={'width': '35%', 'display': 'inline-block', "float":"right"}
+    ),
 ])
 
 
@@ -259,7 +277,46 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "name": "User prescription {}".format(n_clicks)}        
         return [new_trace, []], []
 
-
+@app.callback(dash.dependencies.Output('radar-plot', 'extendData'),
+               [dash.dependencies.Input('submit-val', 'n_clicks')],
+               [dash.dependencies.State('C1-weight', 'value')],
+               [dash.dependencies.State('C2-weight', 'value')],
+               [dash.dependencies.State('C3-weight', 'value')],
+               [dash.dependencies.State('C4-weight', 'value')],
+               [dash.dependencies.State('C5-weight', 'value')],
+               [dash.dependencies.State('C6-weight', 'value')],
+               [dash.dependencies.State('C7-weight', 'value')],
+               [dash.dependencies.State('C8-weight', 'value')],
+               [dash.dependencies.State('H1-weight', 'value')],
+               [dash.dependencies.State('H2-weight', 'value')],
+               [dash.dependencies.State('H3-weight', 'value')],
+               [dash.dependencies.State('H4-weight', 'value')],
+               [dash.dependencies.State('radar-plot', 'figure')]
+              )
+def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
+    if n_clicks > 0:    
+        weights_dict = {
+            'C1': value_c1,
+            'C2': value_c2,
+            'C3': value_c3,
+            'C4': value_c4,
+            'C5': value_c5,
+            'C6': value_c6,
+            'C7': value_c7,
+            'C8': value_c8,
+            'H1': value_h1,
+            'H2': value_h2,
+            'H3': value_h3,
+            'H6': value_h4
+        }
+        new_trace = {
+            "r": [v for _,v in weights_dict.items()],
+            "theta": [k for k,_ in weights_dict.items()],
+            'type': 'scatterpolar',
+            "name": "User prescription {}".format(n_clicks)
+        }
+        return [new_trace, []], []
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8051)
