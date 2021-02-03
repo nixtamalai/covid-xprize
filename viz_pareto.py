@@ -66,7 +66,11 @@ radar_data = {
 }
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
-fig_predictions = go.Figure()
+fig_predictions = go.Figure(layout={"title": {"text": "Predictions plot"}, 
+                            "xaxis": {"title": "Date"},
+                            "yaxis": {"title": "New Cases per Day"},
+                            "template": TEMPLATE
+                            })
 for idx in predictions.PrescriptionIndex.unique():
     display_legend = True if idx == 0 else False
     idf = predictions[predictions.PrescriptionIndex == idx]
