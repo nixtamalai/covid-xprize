@@ -14,6 +14,7 @@ from covid_xprize.nixtamalai.helpers import add_geo_id
 from covid_xprize.nixtamalai.analyze_predictor import IP_COLS
 from microtc.utils import load_model
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+NUM_PRESCRIPTIONS = 10
 
 
 # Faster than is_pareto_efficient_simple, but less readable.
@@ -270,6 +271,45 @@ def policy(weights):
         for k, v in tqdm(pool.imap_unordered(_policy, args), total=len(args)):
             res[k] = v
     return res
+
+
+def prescribe(start_date_str: str,
+              end_date_str: str,
+              path_to_hist_file: str,
+              weigths: np.ndarray) -> pd.DataFrame:
+
+    # Generate prescriptions
+    presc = policy(weigths)
+
+    start_date = pd.to_datetime(start_date_str, format='%Y-%m-%d')
+    end_date = pd.to_datetime(end_date_str, format='%Y-%m-%d')
+    prescription_dict = {
+        'CountryName': [],
+        'RegionName': [],
+        'Date': [],
+        'PrescriptionIndex': []
+    }
+
+    for ip in IP_COLS:
+        prescription_dict[ip] = []
+
+    for geoid, df in weigths.groupby("GeoID"):
+        country_name = df.iloc[0].CountryName
+        region_name = df.iloc[0].RegionName
+        data = presc[geoid]
+        if len(data) < NUM_PRESCRIPTIONS:
+            data += [data[0] for _ in range(len(data), NUM_PRESCRIPTIONS)]
+        for prescription_idx, prescriptor in enumerate(data):
+            for date in pd.date_range(start_date, end_date):
+                date_str = date.strftime("%Y-%m-%d")
+                prescription_dict['CountryName'].append(country_name)
+                prescription_dict['RegionName'].append(region_name)
+                prescription_dict['Date'].append(date_str)
+                prescription_dict['PrescriptionIndex'].append(prescription_idx)
+                for npi, value in zip(IP_COLS, prescriptor):
+                    prescription_dict[npi].append(int(value))
+
+    return pd.DataFrame(prescription_dict)
 
 
 if __name__ == "__main__" and False:
