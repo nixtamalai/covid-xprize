@@ -69,7 +69,7 @@ radar_data = {
 }
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
-fig_predictions = go.Figure(layout={"title": {"text": "Predictions plot"}, 
+fig_predictions = go.Figure(layout={"title": {"text": "Predictions plot"},
                             "xaxis": {"title": "Date"},
                             "yaxis": {"title": "New Cases per Day"},
                             "template": TEMPLATE
@@ -102,14 +102,14 @@ app.layout = html.Div(children=[
                 id='pareto-plot',
                 figure=go.Figure(dict(
                     data=[pareto_data],
-                    layout={"title": {"text": "Pareto plot"}, 
+                    layout={"title": {"text": "Pareto plot"},
                             "xaxis": {"title": "Mean Stringency"},
                             "yaxis": {"title": "Mean New Cases per Day"},
                             "legend":{"yanchor": "top","y": 0.99, "x": 0.8},
                             "template": TEMPLATE
                             }
                 ))
-            )       
+            )
     ],
     style={'width': '50%', 'height':'50%', 'display': 'inline-block',"float":"left" }
     ),
@@ -118,7 +118,7 @@ app.layout = html.Div(children=[
             deg.ExtendableGraph(
                 id='predictions-plot',
                 figure=fig_predictions
-            )       
+            )
     ],
     style={'width': '50%', 'height':'50%', "float":"left"}
     ),
@@ -304,7 +304,7 @@ app.layout = html.Div(children=[
               )
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
                value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
-    if n_clicks > 0:    
+    if n_clicks > 0:
         weights_dict = {
             'CountryName': ['Mexico'],
             'RegionName': [""],
@@ -346,7 +346,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
             prediction_traces.append(trace)
             # fig_predictions.add_trace(go.Scatter(x=idf["Date"], y=idf["PredictedDailyNewCases"],
             #                 mode='lines',line=dict(color=DEFAULT_COLORS[1])))
- 
+
         return ([new_trace, []], []), (([prediction_traces, []], []))
     return ([],[],[]), ([],[],[])
 
@@ -368,7 +368,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
               )
 def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
                value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
-    if n_clicks > 0:    
+    if n_clicks > 0:
         weights_dict = {
             'C1': value_c1,
             'C2': value_c2,
@@ -392,4 +392,4 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
         return [new_trace, []], []
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8051)
+    app.run_server(debug=True, port=8051, host='0.0.0.0')
