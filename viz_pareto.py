@@ -420,4 +420,4 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
         return [new_trace, []], []
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8051)
+    app.run_server(debug=True, port=8051, host='0.0.0.0')
