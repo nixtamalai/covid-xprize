@@ -3,7 +3,7 @@ import plotly.express as px
 from covid_xprize.scoring.prescriptor_scoring import compute_pareto_set
 from covid_xprize.nixtamalai.prescriptors import get_greedy_prescription_df
 from covid_xprize.nixtamalai.prescriptors import generate_cases_and_stringency_for_prescriptions
-
+from covid_xprize.nixtamalai import surrogate_model
 
 # No entiendo muy bien estos max values, la verdad
 IP_MAX_VALUES = {
@@ -69,10 +69,12 @@ def get_pareto_data(objective1_list, objective2_list):
     return xs, ys
 
 def get_overall_data(start_date, end_date, ip_file, weights_df):
-    prescription_df = get_greedy_prescription_df(start_date, end_date, ip_file,weights_df)
-    df, _ = generate_cases_and_stringency_for_prescriptions(start_date,
+    # prescription_df = surrogate_model.prescribe(start_date, end_date, ip_file, weights_df)
+    prescription_df = get_greedy_prescription_df(start_date, end_date, ip_file, weights_df)
+    df, predictions = generate_cases_and_stringency_for_prescriptions(start_date,
                                                             end_date,
                                                             prescription_df,
                                                             weights_df)
+    print(df.head())
     overall_pdf = df.groupby('PrescriptionIndex').mean().reset_index()
-    return overall_pdf
+    return overall_pdf, predictions
