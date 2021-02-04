@@ -75,6 +75,5 @@ def get_overall_data(start_date, end_date, ip_file, weights_df):
                                                             end_date,
                                                             prescription_df,
                                                             weights_df)
-    print(df.head())
     overall_pdf = df.groupby('PrescriptionIndex').mean().reset_index()
     return overall_pdf, predictions

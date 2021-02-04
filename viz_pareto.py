@@ -52,8 +52,11 @@ pareto_data = {"x": pareto[0],
                "showlegend": True,
                }
 # valores de pesos para popular los sliders
+# npis = (weights_df
+#         .drop(columns=['CountryName', 'RegionName'])
+#         .to_dict(orient='records'))[0]
 npis = (weights_df
-        .drop(columns=['CountryName', 'RegionName'])
+        .drop(columns=['CountryName', 'RegionName', 'GeoID'])
         .to_dict(orient='records'))[0]
 BASE_COSTS = npi_val_to_cost(npis)
 # Gráfica inicial de radar

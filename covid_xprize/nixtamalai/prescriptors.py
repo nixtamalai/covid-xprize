@@ -5,6 +5,7 @@ import pandas as pd
 import time
 from covid_xprize.standard_predictor.xprize_predictor import XPrizePredictor
 from covid_xprize.standard_predictor.xprize_predictor import NPI_COLUMNS
+from covid_xprize.nixtamalai.helpers import add_geo_id
 
 
 NUM_PRESCRIPTIONS = 10
@@ -104,6 +105,8 @@ def generate_cases_and_stringency_for_prescriptions(start_date,
     start_time = time.time()
     # Load the prescriptions, handling Date and regions
     pres_df = XPrizePredictor.load_original_data_from_df(prescription_df)
+    # print(pres_df.head())
+
     # Generate predictions for all prescriptions
     predictor = XPrizePredictor()
     pred_dfs = {}
@@ -116,7 +119,6 @@ def generate_cases_and_stringency_for_prescriptions(start_date,
         pred_df['PrescriptionIndex'] = idx
         pred_dfs[idx] = pred_df
     pred_df = pd.concat(list(pred_dfs.values()))
-
     # Aggregate cases by prescription index and geo
     agg_pred_df = pred_df.groupby(['CountryName',
                                    'RegionName',
@@ -124,15 +126,9 @@ def generate_cases_and_stringency_for_prescriptions(start_date,
 
     # Load IP cost weights
     # Only use costs of geos we've predicted for
-    cost_df = cost_df.replace("",np.NaN)
-    cost_df["GeoID"] = np.where(cost_df["RegionName"].isnull(),
-                                      cost_df["CountryName"],
-                                      cost_df["CountryName"] + ' / ' + cost_df["RegionName"])                               
-    agg_pred_df = agg_pred_df.replace("",np.NaN)                               
-    agg_pred_df["GeoID"] = np.where(agg_pred_df["RegionName"].isnull(),
-                                      agg_pred_df["CountryName"],
-                                      agg_pred_df["CountryName"] + ' / ' + agg_pred_df["RegionName"])    
-
+    
+    cost_df = add_geo_id(cost_df)
+    agg_pred_df = add_geo_id(agg_pred_df)
     cost_df = cost_df[cost_df.GeoID.isin(agg_pred_df.GeoID)]
     # Apply weights to prescriptions
     pres_df = weight_prescriptions_by_cost(pres_df, cost_df)
@@ -143,12 +139,10 @@ def generate_cases_and_stringency_for_prescriptions(start_date,
     agg_pres_df = pres_df.groupby(['CountryName',
                                    'RegionName',
                                    'PrescriptionIndex'], dropna=False).mean().reset_index()
-
     # Combine stringency and cases into a single df
     df = agg_pres_df.merge(agg_pred_df, how='outer', on=['CountryName',
                                                          'RegionName',
                                                          'PrescriptionIndex'])
-
     # Only keep columns of interest
     df = df[['CountryName',
              'RegionName',

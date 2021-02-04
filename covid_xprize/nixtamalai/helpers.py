@@ -174,7 +174,9 @@ def hampel_filter_column(df: pd.DataFrame, col: str, k: int=7, threshold: int=3)
 
 
 def add_geo_id(df: pd.DataFrame):
-    df['GeoID'] = np.where(df["RegionName"].isnull(),
+    m = np.array([True if isinstance(x, str) and len(x) == 0 else False for x in df.RegionName]) 
+    m = m | df["RegionName"].isnull()
+    df['GeoID'] = np.where(m,
                            df["CountryName"],
                            df["CountryName"] + ' / ' + df["RegionName"])
     return df

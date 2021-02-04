@@ -308,9 +308,8 @@ def prescribe(start_date_str: str,
                 prescription_dict['PrescriptionIndex'].append(prescription_idx)
                 for npi, value in zip(IP_COLS, prescriptor):
                     prescription_dict[npi].append(int(value))
-
-    return pd.DataFrame(prescription_dict)
-
+    df = (pd.DataFrame(prescription_dict).replace("", np.NaN))
+    return df
 
 if __name__ == "__main__" and False:
     from multiprocessing import Pool, cpu_count
