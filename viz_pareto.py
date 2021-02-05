@@ -1,4 +1,5 @@
 import os
+from datetime import date
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -42,7 +43,7 @@ DEFAULT_COLORS = [
 weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
 # Filtro por el país "seleccionado"
 weights_df = weights_df[weights_df.CountryName == "Mexico"]
-overall_pdf, predictions = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df)
+overall_pdf, predictions = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df, "greedy")
 # Gráfica inicial de Pareto
 pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
@@ -125,6 +126,15 @@ app.layout = html.Div(children=[
 
     html.Div(
         children =[
+            dcc.Dropdown(
+                id='model-selector',
+                options=[
+                    {'label': 'Blid Greedy', 'value': 'greedy'},
+                    {'label': 'Nixtamal Surrogate', 'value': 'nixtamal'}
+                ],
+                value='greedy'
+            ),
+            html.Button('Reset', id='reset-val', n_clicks=0),
             html.P(children=dcc.Markdown("School closing (**C1**)")),
             dcc.Slider(
                 id='C1-weight',
@@ -190,12 +200,21 @@ app.layout = html.Div(children=[
                 tooltip = { 'always_visible': False }
 
             ),
-            html.Button('Reset', id='reset-val', n_clicks=0)
+            
             ],
             style={'width': '20%', 'height':'30%','display': 'inline-block',
                    "background-color": "rgb(237, 237, 237)", "margin-left":"60px"}),
     html.Div(
         children=[
+            dcc.DatePickerRange(
+                id='date-range',
+                min_date_allowed=date(2020, 8, 1),
+                max_date_allowed=date(2021, 12, 31),
+                initial_visible_month=date(2020, 8, 1),
+                start_date=date(2020, 8, 1),
+                end_date=date(2020, 9, 1)
+            ),            
+            html.Button('Submit', id='submit-val', n_clicks=0),
             html.P(children=dcc.Markdown("Restrictions on internal movement (**C7**)")),
             dcc.Slider(
                 id='C7-weight',
@@ -262,7 +281,6 @@ app.layout = html.Div(children=[
                 tooltip = { 'always_visible': False }
 
             ),
-            html.Button('Submit', id='submit-val', n_clicks=0)
     ],
     style={'width': '20%', 'height':'30%','display': 'inline-block', 'margin-top':0,
            "background-color": "rgb(237, 237, 237)"}
@@ -300,10 +318,14 @@ app.layout = html.Div(children=[
                [dash.dependencies.State('H2-weight', 'value')],
                [dash.dependencies.State('H3-weight', 'value')],
                [dash.dependencies.State('H4-weight', 'value')],
+               [dash.dependencies.State('model-selector', 'value')],
+               [dash.dependencies.State('date-range', 'start_date')],
+               [dash.dependencies.State('date-range', 'end_date')],
                [dash.dependencies.State('pareto-plot', 'figure')]
               )
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, start_date, 
+               end_date, figure):
     if n_clicks > 0:    
         weights_dict = {
             'CountryName': ['Mexico'],
@@ -324,7 +346,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
         weights_dict = npi_cost_to_val(weights_dict)
         user_weights = pd.DataFrame.from_dict(weights_dict)
         overall_pdf, predictions = get_overall_data(
-            START_DATE, END_DATE, IP_FILE, user_weights)
+            start_date, end_date, IP_FILE, user_weights, model)
         pareto = get_pareto_data(list(overall_pdf['Stringency']),
                                  list(overall_pdf['PredictedDailyNewCases']))
         new_trace = {"x": pareto[0],
