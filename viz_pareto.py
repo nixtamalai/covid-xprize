@@ -27,19 +27,7 @@ TEST_COST = "covid_xprize/validation/data/uniform_random_costs.csv"
 COUNTRY = "Mexico"
 # Este escenario sólo trae a México, por eso sólo se modela ese geo. Esto tendría que cambiar
 IP_FILE = "prescriptions/robojudge_test_scenario.csv"
-DEFAULT_COLORS = [
-    '#1f77b4',  # muted blue
-    '#ff7f0e',  # safety orange
-    '#2ca02c',  # cooked asparagus green
-    '#d62728',  # brick red
-    '#9467bd',  # muted purple
-    '#8c564b',  # chestnut brown
-    '#e377c2',  # raspberry yogurt pink
-    '#7f7f7f',  # middle gray
-    '#bcbd22',  # curry yellow-green
-    '#17becf'   # blue-teal
-]
-
+DEFAULT_COLORS = px.colors.qualitative.Plotly
 weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
 # Filtro por el país "seleccionado"
 weights_df = weights_df[weights_df.CountryName == "Mexico"]
@@ -66,7 +54,7 @@ radar_data = {
 }
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
-fig_predictions = go.Figure(layout={#"title": {"text": "Predictions plot"}, 
+fig_predictions = go.Figure(layout={ 
                             "xaxis": {"title": "Date"},
                             "yaxis": {"title": "New Cases per Day"},
                             "template": TEMPLATE
@@ -78,7 +66,7 @@ for idx in predictions.PrescriptionIndex.unique():
         go.Scatter(
             x=idf["Date"],
             y=idf["PredictedDailyNewCases"],
-            mode='lines', line=dict(color=DEFAULT_COLORS[1]),
+            mode='lines', line=dict(color=DEFAULT_COLORS[0]),
             name="Base prescription",
             legendgroup="group_0",
             showlegend=display_legend
@@ -165,7 +153,7 @@ app.layout =html.Div(
                         id='pareto-plot',
                         figure=go.Figure(dict(
                             data=[pareto_data],
-                            layout={#"title": {"text": "Pareto plot"},
+                            layout={
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
                                     "legend": {"yanchor": "top", "y": 0.99, "x": 0.8},
@@ -243,15 +231,12 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
             trace = {"x": idf["Date"],
                      "y": idf["PredictedDailyNewCases"],
                      "mode": "lines",
-                     "line": dict(color=DEFAULT_COLORS[n_clicks + 1]),
+                     "line": dict(color=DEFAULT_COLORS[n_clicks]),
                      "name": "User prescription {}".format(n_clicks),
                      "legendgroup": "group_{}".format(n_clicks),
                      "showlegend": display_legend
                     }
-            prediction_traces.append(trace)
-            # fig_predictions.add_trace(go.Scatter(x=idf["Date"], y=idf["PredictedDailyNewCases"],
-            #                 mode='lines',line=dict(color=DEFAULT_COLORS[1])))
- 
+            prediction_traces.append(trace) 
         return ([new_trace, []], []), (([prediction_traces, []], []))
     return ([],[],[]), ([],[],[])
 
