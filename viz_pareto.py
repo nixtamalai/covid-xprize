@@ -1,4 +1,5 @@
 import os
+import base64
 from datetime import date
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,6 +29,9 @@ COUNTRY = "Mexico"
 # Este escenario sólo trae a México, por eso sólo se modela ese geo. Esto tendría que cambiar
 IP_FILE = "prescriptions/robojudge_test_scenario.csv"
 DEFAULT_COLORS = px.colors.qualitative.Plotly
+logo_filename = "./covid_xprize/nixtamalai/img/logo.jpeg"
+encoded_logo = base64.b64encode(open(logo_filename, 'rb').read())
+
 weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
 # Filtro por el país "seleccionado"
 weights_df = weights_df[weights_df.CountryName == "Mexico"]
@@ -79,11 +83,15 @@ app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
 app.layout =html.Div(
     [
-        dbc.Row(dbc.Col(html.Div(html.H1(children='Visualizing Intervention Plans')))),
+        dbc.Row(
+            [dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_logo.decode()), 
+                     height="100px"), width=1),
+            dbc.Col(html.Div(html.H1(children='Visualizing Intervention Plans')))]
+            ),
         dbc.Row(html.Hr()),
         dbc.Row(
             [
-                dbc.Col(html.Div(sliders[0:3]), width={"size": 2, "offset": 1}),
+                dbc.Col(html.Div(sliders[0:3]), width=2),
                 dbc.Col(html.Div(sliders[3:6]), width=2),
                 dbc.Col(html.Div(sliders[6:9]), width=2),
                 dbc.Col(html.Div(sliders[9:12]), width=2),
