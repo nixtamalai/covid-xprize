@@ -70,6 +70,8 @@ radar_data = {
 }
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
+predictions['Prescriptor'] = 0
+
 fig_predictions = go.Figure(layout={"title": {"text": "Predictions plot"},
                             "xaxis": {"title": "Date"},
                             "yaxis": {"title": "New Cases per Day"},
@@ -89,11 +91,24 @@ for idx in predictions.PrescriptionIndex.unique():
         )
     )
 
-fig_predictions_heat = go.Figure(
-    layout={"title": {"text": "Predictions plot"},
-            "xaxis": {"title": "Date"},
-            "yaxis": {"title": "New Cases per Day"},
-            "template": TEMPLATE})
+# fig_predictions_heat = go.Figure(
+#     layout={"title": {"text": "Predictions plot"},
+#             "xaxis": {"title": "Date"},
+#             "yaxis": {"title": "New Cases per Day"},
+#             "template": TEMPLATE})
+
+fig_predictions_heat = px.line(predictions,
+    facet_col="Prescriptor",
+    x="Date",
+    y="PredictedDailyNewCases",
+    facet_col_wrap=2)
+# fig.add_hline(y=1, line_dash="dot",
+#               annotation_text="Jan 1, 2018 baseline",
+#               annotation_position="bottom right")
+
+# fig.add_vrect(x0="2018-09-24", x1="2018-12-18", col=1,
+#               annotation_text="decline", annotation_position="top left",
+#               fillcolor="green", opacity=0.25, line_width=0)
 
 for idx in predictions.PrescriptionIndex.unique():
     display_legend = True if idx == 0 else False
@@ -225,13 +240,6 @@ app.layout = html.Div(children=[
             style={'width': '20%', 'height':'30%','display': 'inline-block',
                    "background-color": "rgb(237, 237, 237)", "margin-left":"60px"}),
     html.Div(
-             children=[
-                deg.ExtendableGraph(
-                 id='predictions-heat-plot',
-                 figure=fig_predictions)],
-             style={'width': '50%', 'height': '50%', "float": "left"}
-    ),
-    html.Div(
         children=[
             dcc.DatePickerRange(
                 id='date-range',
@@ -327,12 +335,18 @@ app.layout = html.Div(children=[
         )],
         style={'width': '35%', 'display': 'inline-block', "float": "right"}
     ),
+    html.Div(
+             children=[
+                deg.ExtendableGraph(
+                 id='predictions-heat-plot',
+                 figure=fig_predictions_heat)],
+             style={'width': '50%', 'height': '50%', "float": "left"}
+    ),
 ])
 
 
 @app.callback([dash.dependencies.Output('pareto-plot', 'extendData'),
-               dash.dependencies.Output('predictions-plot', 'extendData'),
-               dash.dependencies.Output('predictions-heat-plot', 'extendData')],
+               dash.dependencies.Output('predictions-plot', 'extendData')],
               [dash.dependencies.Input('submit-val', 'n_clicks')],
               [dash.dependencies.State('C1-weight', 'value')],
               [dash.dependencies.State('C2-weight', 'value')],
@@ -351,6 +365,26 @@ app.layout = html.Div(children=[
                [dash.dependencies.State('date-range', 'end_date')],
                [dash.dependencies.State('pareto-plot', 'figure')]
               )
+
+@app.callback(dash.dependencies.Output('predictions-heat-plot', 'extendData'),
+              [dash.dependencies.Input('submit-val', 'n_clicks')],
+              [dash.dependencies.State('C1-weight', 'value')],
+              [dash.dependencies.State('C2-weight', 'value')],
+               [dash.dependencies.State('C3-weight', 'value')],
+               [dash.dependencies.State('C4-weight', 'value')],
+               [dash.dependencies.State('C5-weight', 'value')],
+               [dash.dependencies.State('C6-weight', 'value')],
+               [dash.dependencies.State('C7-weight', 'value')],
+               [dash.dependencies.State('C8-weight', 'value')],
+               [dash.dependencies.State('H1-weight', 'value')],
+               [dash.dependencies.State('H2-weight', 'value')],
+               [dash.dependencies.State('H3-weight', 'value')],
+               [dash.dependencies.State('H4-weight', 'value')],
+               [dash.dependencies.State('model-selector', 'value')],
+               [dash.dependencies.State('date-range', 'start_date')],
+               [dash.dependencies.State('date-range', 'end_date')])
+
+
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
                value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, start_date,
                end_date, figure):
@@ -381,12 +415,14 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "y": pareto[1],
                      "name": "User prescription {}".format(n_clicks)}
         predictions = pd.concat(predictions)
+        predictions['Prescriptor'] = n_clicks
         prediction_traces = []
         for idx in predictions.PrescriptionIndex.unique():
             display_legend = True if idx == 0 else False
             idf = predictions[predictions.PrescriptionIndex == idx]
             trace = {"x": idf["Date"],
                      "y": idf["PredictedDailyNewCases"],
+                     "facet_col":"Prescriptor",
                      "mode": "lines",
                      "line": dict(color=DEFAULT_COLORS[n_clicks + 1]),
                      "name": "User prescription {}".format(n_clicks),
@@ -394,8 +430,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "showlegend": display_legend
                     }
             prediction_traces.append(trace)
-            # fig_predictions.add_trace(go.Scatter(x=idf["Date"], y=idf["PredictedDailyNewCases"],
-            #                 mode='lines',line=dict(color=DEFAULT_COLORS[1])))
+            fig_predictions_heat.add_trace(px.line(idf, x="Date", y="PredictedDailyNewCases"))
 
         return ([new_trace, []], []), (([prediction_traces, []], [])), (([prediction_traces, []], []))
     return ([],[],[]), ([],[],[]), ([],[],[])
