@@ -96,6 +96,7 @@ app.layout =html.Div(
                                 {'label': 'Blind Greedy', 'value': 'greedy'},
                                 {'label': 'Nixtamal Surrogate', 'value': 'nixtamal'}
                             ],
+                            style={'color': 'black'},
                             value='greedy'
                         )),
                         html.Hr(),
@@ -113,9 +114,11 @@ app.layout =html.Div(
                 dbc.Col(
                     [
                         html.Hr(),
-                        html.Div(dbc.Button('Submit', id='submit-val',color="success",  n_clicks=0)),
+                        html.Div(dbc.Button('Submit', id='submit-val',color="success",
+                          n_clicks=0, block=True)),
                         html.Hr(),
-                        html.Div(dbc.Button('Reset', id='reset-val', color="warning", n_clicks=0))
+                        html.Div(dbc.Button('Reset', id='reset-val', color="warning", 
+                        n_clicks=0, block=True))
                         
                     ],
                         
