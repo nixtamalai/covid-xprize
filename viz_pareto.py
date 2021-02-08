@@ -37,7 +37,7 @@ pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
 pareto_data = {"x": pareto[0],
                "y": pareto[1],
-               "name": "Base Prescriptor",
+               "name": "Base (Blind Greedy)",
                "showlegend": True,
                }
 npis = (weights_df
@@ -48,7 +48,7 @@ BASE_COSTS = npi_val_to_cost(npis)
 radar_data = {
     "r": [v for _,v in BASE_COSTS.items()],
     "theta": [k.split("_")[0] for k,_ in BASE_COSTS.items()],
-    "name": "Base Prescriptor",
+    "name": "Base (Blind Greedy)",
     'type': 'scatterpolar',
     "showlegend": True,
 }
@@ -57,6 +57,7 @@ predictions = pd.concat(predictions)
 fig_predictions = go.Figure(layout={ 
                             "xaxis": {"title": "Date"},
                             "yaxis": {"title": "New Cases per Day"},
+                            "legend": {"yanchor": "top", "y": 0.99, "x": 0.05},
                             "template": TEMPLATE
                             })
 for idx in predictions.PrescriptionIndex.unique():
@@ -67,7 +68,7 @@ for idx in predictions.PrescriptionIndex.unique():
             x=idf["Date"],
             y=idf["PredictedDailyNewCases"],
             mode='lines', line=dict(color=DEFAULT_COLORS[0]),
-            name="Base prescription",
+            name="Base (Blind Greedy)",
             legendgroup="group_0",
             showlegend=display_legend
         )
@@ -156,7 +157,7 @@ app.layout =html.Div(
                             layout={
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
-                                    "legend": {"yanchor": "top", "y": 0.99, "x": 0.8},
+                                    "legend": {"yanchor": "top", "y": 0.99, "x": 0.5},
                                     "template": TEMPLATE
                                     }
                         ))
@@ -214,6 +215,8 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
             'H3_Contact tracing': [value_h3],
             'H6_Facial Coverings': [value_h4]
         }
+        prescriptor_names = {"greedy": "Blind Greedy",
+                             "nixtamal": "Nixtamal Surrogate"}
         weights_dict = npi_cost_to_val(weights_dict)
         user_weights = pd.DataFrame.from_dict(weights_dict)
         overall_pdf, predictions = get_overall_data(
@@ -222,7 +225,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                                  list(overall_pdf['PredictedDailyNewCases']))
         new_trace = {"x": pareto[0],
                      "y": pareto[1],
-                     "name": "User prescription {}".format(n_clicks)}
+                     "name": "{} prescription {}".format(prescriptor_names[model], n_clicks)}
         predictions = pd.concat(predictions)
         prediction_traces = []
         for idx in predictions.PrescriptionIndex.unique():
@@ -232,7 +235,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "y": idf["PredictedDailyNewCases"],
                      "mode": "lines",
                      "line": dict(color=DEFAULT_COLORS[n_clicks]),
-                     "name": "User prescription {}".format(n_clicks),
+                     "name": "{} prescription {}".format(prescriptor_names[model], n_clicks),
                      "legendgroup": "group_{}".format(n_clicks),
                      "showlegend": display_legend
                     }
@@ -254,10 +257,11 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                [dash.dependencies.State('H2-weight', 'value')],
                [dash.dependencies.State('H3-weight', 'value')],
                [dash.dependencies.State('H4-weight', 'value')],
+               [dash.dependencies.State('model-selector', 'value')],
                [dash.dependencies.State('radar-plot', 'figure')]
               )
 def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, figure):
     if n_clicks > 0:    
         weights_dict = {
             'C1': value_c1,
@@ -273,11 +277,13 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
             'H3': value_h3,
             'H6': value_h4
         }
+        prescriptor_names = {"greedy": "Blind Greedy",
+                             "nixtamal": "Nixtamal Surrogate"}
         new_trace = {
             "r": [v for _,v in weights_dict.items()],
             "theta": [k for k,_ in weights_dict.items()],
             'type': 'scatterpolar',
-            "name": "User prescription {}".format(n_clicks)
+            "name": "{} prescription {}".format(prescriptor_names[model], n_clicks)
         }
         return [new_trace, []], []
 
