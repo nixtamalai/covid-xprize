@@ -150,7 +150,7 @@ app.layout =html.Div(
     [
         dbc.Row(
             [dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_logo.decode()), 
-                     height="100px"), width=1),
+                     height="100px",style={'padding-left': '30px'}), width=1),
             dbc.Col(html.Div(html.H1(children='Visualizing Intervention Plans')))]
             ),
         dbc.Row(html.Hr()),
@@ -191,27 +191,27 @@ app.layout =html.Div(
                           n_clicks=0, block=True)),
                         html.Hr(),
                         html.Div(dbc.Button('Reset', id='reset-val', color="warning", 
-                        n_clicks=0, block=True))
+                        href='/', n_clicks=0, block=True))
                         
                     ],
                         
                     width=1),
-            ]
+            ], style={'padding-left': '30px'}
         ),
         html.Hr(),
         dbc.Row(
             [
                 dbc.Col(
-                    html.Div(html.H4("NPI Weights"))
+                    html.Div(html.H4("NPI Weights"),style={'text-align': 'center'})
                     ),               
                 dbc.Col(
-                    html.Div(html.H4("Pareto Plot"))
+                    html.Div(html.H4("Pareto Plot"),style={'text-align': 'center'})
                     ),
                 dbc.Col(
-                    html.Div(html.H4("Predictions"))
+                    html.Div(html.H4("Predictions"),style={'text-align': 'center'})
                     ),
             ],
-            align="center",
+            justify="center", align="center"
         ),
         dbc.Row(
             [
