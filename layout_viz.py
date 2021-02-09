@@ -1,5 +1,4 @@
 import os
-import base64
 from datetime import date
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,9 +27,18 @@ TEST_COST = "covid_xprize/validation/data/uniform_random_costs.csv"
 COUNTRY = "Mexico"
 # Este escenario sólo trae a México, por eso sólo se modela ese geo. Esto tendría que cambiar
 IP_FILE = "prescriptions/robojudge_test_scenario.csv"
-DEFAULT_COLORS = px.colors.qualitative.Plotly
-logo_filename = "./covid_xprize/nixtamalai/img/logo.jpeg"
-encoded_logo = base64.b64encode(open(logo_filename, 'rb').read())
+DEFAULT_COLORS = [
+    '#1f77b4',  # muted blue
+    '#ff7f0e',  # safety orange
+    '#2ca02c',  # cooked asparagus green
+    '#d62728',  # brick red
+    '#9467bd',  # muted purple
+    '#8c564b',  # chestnut brown
+    '#e377c2',  # raspberry yogurt pink
+    '#7f7f7f',  # middle gray
+    '#bcbd22',  # curry yellow-green
+    '#17becf'   # blue-teal
+]
 
 weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
 # Filtro por el país "seleccionado"
@@ -41,7 +49,7 @@ pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
 pareto_data = {"x": pareto[0],
                "y": pareto[1],
-               "name": "Base (Blind Greedy)",
+               "name": "Base Prescriptor",
                "showlegend": True,
                }
 npis = (weights_df
@@ -52,16 +60,15 @@ BASE_COSTS = npi_val_to_cost(npis)
 radar_data = {
     "r": [v for _,v in BASE_COSTS.items()],
     "theta": [k.split("_")[0] for k,_ in BASE_COSTS.items()],
-    "name": "Base (Blind Greedy)",
+    "name": "Base Prescriptor",
     'type': 'scatterpolar',
     "showlegend": True,
 }
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
-fig_predictions = go.Figure(layout={"title": {"text": "Predictions plot"},
+fig_predictions = go.Figure(layout={#"title": {"text": "Predictions plot"}, 
                             "xaxis": {"title": "Date"},
                             "yaxis": {"title": "New Cases per Day"},
-                            "legend": {"yanchor": "top", "y": 0.99, "x": 0.05},
                             "template": TEMPLATE
                             })
 for idx in predictions.PrescriptionIndex.unique():
@@ -71,92 +78,23 @@ for idx in predictions.PrescriptionIndex.unique():
         go.Scatter(
             x=idf["Date"],
             y=idf["PredictedDailyNewCases"],
-            mode='lines', line=dict(color=DEFAULT_COLORS[0]),
-            name="Base (Blind Greedy)",
+            mode='lines', line=dict(color=DEFAULT_COLORS[1]),
+            name="Base prescription",
             legendgroup="group_0",
             showlegend=display_legend
         )
     )
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-app.layout = html.Div(children=[
-    html.H1(children='Visualizing Intervention Plans'),
-
-    # html.Div(children='''
-    #     XPRIZE
-    # '''),
-    html.Div(
-        children =[
-            deg.ExtendableGraph(
-                id='pareto-plot',
-                figure=go.Figure(dict(
-                    data=[pareto_data],
-                    layout={"title": {"text": "Pareto plot"},
-                            "xaxis": {"title": "Mean Stringency"},
-                            "yaxis": {"title": "Mean New Cases per Day"},
-                            "legend":{"yanchor": "top","y": 0.99, "x": 0.8},
-                            "template": TEMPLATE
-                            }
-                ))
-            )
-    ],
-    style={'width': '50%', 'height':'50%', 'display': 'inline-block',"float":"left" }
-    ),
-    html.Div(
-        children =[
-            deg.ExtendableGraph(
-                id='predictions-plot',
-                figure=fig_predictions
-            )
-    ],
-    style={'width': '50%', 'height':'50%', "float":"left"}
-    ),
-
-    html.Div(
-        children =[
-            html.P(children=dcc.Markdown("School closing (**C1**)")),
-            dcc.Slider(
-                id='C1-weight',
-                min=0,
-                max=1,
-                step=0.1,
-                value=BASE_COSTS['C1_School closing'],
-                marks = {0:"0", 0.5:"0.5", 1: "1"},
-                tooltip = { 'always_visible': False }
-            ),
-            html.P(children=dcc.Markdown("Workplace closing (**C2**)")),
-            dcc.Slider(
-                id='C2-weight',
-                min=0,
-                max=1,
-                step=0.1,
-                value=BASE_COSTS['C2_Workplace closing'],
-                marks = {0:"0", 0.5:"0.5", 1: "1"},
-                tooltip = { 'always_visible': False }
-
-            ),
-            html.P(children=dcc.Markdown("Cancel public events (**C3**)")),
-            dcc.Slider(
-                id='C3-weight',
-                min=0,
-                max=1,
-                step=0.1,
-                value=BASE_COSTS['C3_Cancel public events'],
-                marks = {0:"0", 0.5:"0.5", 1: "1"},
-                tooltip = { 'always_visible': False }
+sliders = get_sliders(BASE_COSTS)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
 app.layout =html.Div(
     [
-        dbc.Row(
-            [dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_logo.decode()), 
-                     height="100px"), width=1),
-            dbc.Col(html.Div(html.H1(children='Visualizing Intervention Plans')))]
-            ),
+        dbc.Row(dbc.Col(html.Div(html.H1(children='Visualizing Intervention Plans')))),
         dbc.Row(html.Hr()),
         dbc.Row(
             [
-                dbc.Col(html.Div(sliders[0:3]), width=2),
+                dbc.Col(html.Div(sliders[0:3]), width={"size": 2, "offset": 1}),
                 dbc.Col(html.Div(sliders[3:6]), width=2),
                 dbc.Col(html.Div(sliders[6:9]), width=2),
                 dbc.Col(html.Div(sliders[9:12]), width=2),
@@ -169,7 +107,6 @@ app.layout =html.Div(
                                 {'label': 'Blind Greedy', 'value': 'greedy'},
                                 {'label': 'Nixtamal Surrogate', 'value': 'nixtamal'}
                             ],
-                            style={'color': 'black'},
                             value='greedy'
                         )),
                         html.Hr(),
@@ -187,11 +124,9 @@ app.layout =html.Div(
                 dbc.Col(
                     [
                         html.Hr(),
-                        html.Div(dbc.Button('Submit', id='submit-val',color="success",
-                          n_clicks=0, block=True)),
+                        html.Div(dbc.Button('Submit', id='submit-val',color="success",  n_clicks=0)),
                         html.Hr(),
-                        html.Div(dbc.Button('Reset', id='reset-val', color="warning", 
-                        n_clicks=0, block=True))
+                        html.Div(dbc.Button('Reset', id='reset-val', color="warning", n_clicks=0))
                         
                     ],
                         
@@ -230,10 +165,10 @@ app.layout =html.Div(
                         id='pareto-plot',
                         figure=go.Figure(dict(
                             data=[pareto_data],
-                            layout={
+                            layout={#"title": {"text": "Pareto plot"},
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
-                                    "legend": {"yanchor": "top", "y": 0.99, "x": 0.5},
+                                    "legend": {"yanchor": "top", "y": 0.99, "x": 0.8},
                                     "template": TEMPLATE
                                     }
                         ))
@@ -272,8 +207,9 @@ app.layout =html.Div(
                [dash.dependencies.State('pareto-plot', 'figure')]
               )
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
-    if n_clicks > 0:
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, start_date, 
+               end_date, figure):
+    if n_clicks > 0:    
         weights_dict = {
             'CountryName': ['Mexico'],
             'RegionName': [""],
@@ -290,8 +226,6 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
             'H3_Contact tracing': [value_h3],
             'H6_Facial Coverings': [value_h4]
         }
-        prescriptor_names = {"greedy": "Blind Greedy",
-                             "nixtamal": "Nixtamal Surrogate"}
         weights_dict = npi_cost_to_val(weights_dict)
         user_weights = pd.DataFrame.from_dict(weights_dict)
         overall_pdf, predictions = get_overall_data(
@@ -300,7 +234,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                                  list(overall_pdf['PredictedDailyNewCases']))
         new_trace = {"x": pareto[0],
                      "y": pareto[1],
-                     "name": "{} prescription {}".format(prescriptor_names[model], n_clicks)}
+                     "name": "User prescription {}".format(n_clicks)}
         predictions = pd.concat(predictions)
         prediction_traces = []
         for idx in predictions.PrescriptionIndex.unique():
@@ -309,15 +243,15 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
             trace = {"x": idf["Date"],
                      "y": idf["PredictedDailyNewCases"],
                      "mode": "lines",
-                     "line": dict(color=DEFAULT_COLORS[n_clicks]),
-                     "name": "{} prescription {}".format(prescriptor_names[model], n_clicks),
+                     "line": dict(color=DEFAULT_COLORS[n_clicks + 1]),
+                     "name": "User prescription {}".format(n_clicks),
                      "legendgroup": "group_{}".format(n_clicks),
                      "showlegend": display_legend
                     }
             prediction_traces.append(trace)
             # fig_predictions.add_trace(go.Scatter(x=idf["Date"], y=idf["PredictedDailyNewCases"],
             #                 mode='lines',line=dict(color=DEFAULT_COLORS[1])))
-
+ 
         return ([new_trace, []], []), (([prediction_traces, []], []))
     return ([],[],[]), ([],[],[])
 
@@ -335,12 +269,11 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                [dash.dependencies.State('H2-weight', 'value')],
                [dash.dependencies.State('H3-weight', 'value')],
                [dash.dependencies.State('H4-weight', 'value')],
-               [dash.dependencies.State('model-selector', 'value')],
                [dash.dependencies.State('radar-plot', 'figure')]
               )
 def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
                value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
-    if n_clicks > 0:
+    if n_clicks > 0:    
         weights_dict = {
             'C1': value_c1,
             'C2': value_c2,
@@ -355,16 +288,14 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
             'H3': value_h3,
             'H6': value_h4
         }
-        prescriptor_names = {"greedy": "Blind Greedy",
-                             "nixtamal": "Nixtamal Surrogate"}
         new_trace = {
             "r": [v for _,v in weights_dict.items()],
             "theta": [k for k,_ in weights_dict.items()],
             'type': 'scatterpolar',
-            "name": "{} prescription {}".format(prescriptor_names[model], n_clicks)
+            "name": "User prescription {}".format(n_clicks)
         }
         return [new_trace, []], []
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8050)
+    app.run_server(debug=True, port=8053)
