@@ -298,6 +298,22 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
         }
         return [new_trace, []], []
 
+# @app.callback(
+#     dash.dependencies.Output("pareto-plot", "figure"),
+#     [dash.dependencies.Input("pareto-plot", "hoverData")],
+#     [dash.dependencies.State('pareto-plot', 'figure')]
+# )
+# def highlight_trace(hover_data, figure):
+#     # here you set the default settings
+#     # for trace in my_pot.data:
+#     #     country["line"]["width"] = 1
+#     #     country["opacity"] = 0.5
+#     if hover_data:
+#         trace_index = hover_data["points"][0]["curveNumber"]
+#         print(figure["data"])
+#         # figure["data"][trace_index]["line"]["width"] = 5
+#         # figure["data"][trace_index]["opacity"] = 1
+#     return figure
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8050)
+    app.run_server(debug=True, port=8050, host='0.0.0.0')
