@@ -126,7 +126,7 @@ app.layout =html.Div(
                           n_clicks=0, block=True)),
                         html.Hr(),
                         html.Div(dbc.Button('Reset', id='reset-val', color="warning", 
-                        n_clicks=0, block=True))
+                        href='/', n_clicks=0, block=True))
                         
                     ],
                         
