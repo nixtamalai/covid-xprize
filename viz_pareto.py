@@ -20,7 +20,7 @@ from covid_xprize.nixtamalai.viz_components import get_sliders
 import palettable as pltt
 import dash_table
 
-TEMPLATE = 'plotly_dark'
+# TEMPLATE = 'plotly_dark'
 
 
 START_DATE = "2020-08-01"
@@ -62,42 +62,30 @@ radar_data = {
 predictions = pd.concat(predictions)
 predictions['Prescriptor'] = 0
 
+fig = px.line(predictions,
+    facet_col="Prescriptor",
+    color="Prescriptor",
+    line_group="PrescriptionIndex",
+    x="Date",
+    y="PredictedDailyNewCases",
+    facet_col_wrap=3)
+
 data_table = dash_table.DataTable(
     id='table',
     columns=[{"name": i, "id": i} for i in predictions.columns],
     data=predictions.to_dict('records'),
-    style_header={'backgroundColor': 'rgb(30, 30, 30)'},
-    style_cell={
-        'backgroundColor': 'rgb(50, 50, 50)',
-        'color': 'white'
-    },
-
+    export_format='xlsx',
+    export_headers='display',
+    page_size=10,
+    sort_action='native'
 )
 
-fig_predictions = go.Figure(layout={
-                            "xaxis": {"title": "Date"},
-                            "yaxis": {"title": "New Cases per Day"},
-                            "legend": {"yanchor": "top", "y": 0.99, "x": 0.05},
-                            "template": TEMPLATE
-                            })
-for idx in predictions.PrescriptionIndex.unique():
-    display_legend = True if idx == 0 else False
-    idf = predictions[predictions.PrescriptionIndex == idx]
-    fig_predictions.add_trace(
-        go.Scatter(
-            x=idf["Date"],
-            y=idf["PredictedDailyNewCases"],
-            mode='lines', line=dict(color=DEFAULT_COLORS[0]),
-            name="Base (Blind Greedy)",
-            legendgroup="group_0",
-            showlegend=display_legend
-        )
-    )
-
 sliders = get_sliders(BASE_COSTS)
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app = dash.Dash(__name__,
+    external_stylesheets=[dbc.themes.FLATLY],
+    prevent_initial_callbacks=True)
 
-app.layout =html.Div(
+app.layout = dbc.Container(
     [
         dbc.Row(
             [dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_logo.decode()),
@@ -152,26 +140,12 @@ app.layout =html.Div(
         dbc.Row(
             [
                 dbc.Col(
-                    html.Div(html.H4("NPI Weights"),style={'text-align': 'center'})
-                    ),
-                dbc.Col(
-                    html.Div(html.H4("Pareto Plot"),style={'text-align': 'center'})
-                    ),
-                dbc.Col(
-                    html.Div(html.H4("Predictions"),style={'text-align': 'center'})
-                    ),
-            ],
-            justify="center", align="center"
-        ),
-        dbc.Row(
-            [
-                dbc.Col(
                     deg.ExtendableGraph(
                             id='radar-plot',
                             figure=go.Figure(dict(
                                 data=[radar_data],
                                 layout={"title": {"text": "NPI Weights"},
-                                        "template": TEMPLATE}
+                                        }
                             ))
                     ), width=4
                 ),
@@ -180,33 +154,28 @@ app.layout =html.Div(
                         id='pareto-plot',
                         figure=go.Figure(dict(
                             data=[pareto_data],
-                            layout={
+                            layout={"title": {"text": "Pareto Plot"},
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
                                     "legend": {"yanchor": "top", "y": 0.99, "x": 0.5},
-                                    "template": TEMPLATE
+
                                     }
                         ))
-                    ), width=4
+                    ), width=8
                 ),
-                dbc.Col(
-                    deg.ExtendableGraph(
-                        id='predictions-plot',
-                        figure=fig_predictions
-                    ), width=4
-                )
             ],
             align="center",
         ),
         dbc.Row(dbc.Col(
-            dcc.Graph(id='predictions-graphs'))
+            dcc.Graph(id='predictions-graphs', figure=fig))
         ),
-        dbc.Row(data_table),
-    ]
+        dbc.Row(dbc.Col(
+            data_table, width="auto"),
+        align='center', justify="center"),
+    ], fluid=True
 )
 
 @app.callback([dash.dependencies.Output('pareto-plot', 'extendData'),
-               dash.dependencies.Output('predictions-plot', 'extendData'),
                dash.dependencies.Output('table', 'predictions')],
                [dash.dependencies.Input('submit-val', 'n_clicks')],
                [dash.dependencies.State('C1-weight', 'value')],
@@ -272,8 +241,8 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                     }
             prediction_traces.append(trace)
 
-        return ([new_trace, []], []), (([prediction_traces, []], [])), predictions.to_dict('records')
-    return ([],[],[]), ([],[],[]), None
+        return ([new_trace, []], []), predictions.to_dict('records')
+    return ([],[],[]), predictions.to_dict('records')
 
 @app.callback(dash.dependencies.Output('radar-plot', 'extendData'),
                [dash.dependencies.Input('submit-val', 'n_clicks')],
@@ -345,6 +314,8 @@ def update_predictions_graphs(data):
 
     fig = px.line(predictions,
         facet_col="Prescriptor",
+        color="Prescriptor",
+        line_group="PrescriptionIndex",
         x="Date",
         y="PredictedDailyNewCases",
         facet_col_wrap=3)
