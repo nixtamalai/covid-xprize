@@ -58,7 +58,7 @@ radar_data = {
 }
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
-fig_predictions = go.Figure(layout={"title": {"text": "Predictions plot"},
+fig_predictions = go.Figure(layout={ 
                             "xaxis": {"title": "Date"},
                             "yaxis": {"title": "New Cases per Day"},
                             "legend": {"yanchor": "top", "y": 0.99, "x": 0.05},
@@ -78,73 +78,8 @@ for idx in predictions.PrescriptionIndex.unique():
         )
     )
 
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
-app.layout = html.Div(children=[
-    html.H1(children='Visualizing Intervention Plans'),
-
-    # html.Div(children='''
-    #     XPRIZE
-    # '''),
-    html.Div(
-        children =[
-            deg.ExtendableGraph(
-                id='pareto-plot',
-                figure=go.Figure(dict(
-                    data=[pareto_data],
-                    layout={"title": {"text": "Pareto plot"},
-                            "xaxis": {"title": "Mean Stringency"},
-                            "yaxis": {"title": "Mean New Cases per Day"},
-                            "legend":{"yanchor": "top","y": 0.99, "x": 0.8},
-                            "template": TEMPLATE
-                            }
-                ))
-            )
-    ],
-    style={'width': '50%', 'height':'50%', 'display': 'inline-block',"float":"left" }
-    ),
-    html.Div(
-        children =[
-            deg.ExtendableGraph(
-                id='predictions-plot',
-                figure=fig_predictions
-            )
-    ],
-    style={'width': '50%', 'height':'50%', "float":"left"}
-    ),
-
-    html.Div(
-        children =[
-            html.P(children=dcc.Markdown("School closing (**C1**)")),
-            dcc.Slider(
-                id='C1-weight',
-                min=0,
-                max=1,
-                step=0.1,
-                value=BASE_COSTS['C1_School closing'],
-                marks = {0:"0", 0.5:"0.5", 1: "1"},
-                tooltip = { 'always_visible': False }
-            ),
-            html.P(children=dcc.Markdown("Workplace closing (**C2**)")),
-            dcc.Slider(
-                id='C2-weight',
-                min=0,
-                max=1,
-                step=0.1,
-                value=BASE_COSTS['C2_Workplace closing'],
-                marks = {0:"0", 0.5:"0.5", 1: "1"},
-                tooltip = { 'always_visible': False }
-
-            ),
-            html.P(children=dcc.Markdown("Cancel public events (**C3**)")),
-            dcc.Slider(
-                id='C3-weight',
-                min=0,
-                max=1,
-                step=0.1,
-                value=BASE_COSTS['C3_Cancel public events'],
-                marks = {0:"0", 0.5:"0.5", 1: "1"},
-                tooltip = { 'always_visible': False }
+sliders = get_sliders(BASE_COSTS)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
 app.layout =html.Div(
     [
@@ -272,8 +207,9 @@ app.layout =html.Div(
                [dash.dependencies.State('pareto-plot', 'figure')]
               )
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
-    if n_clicks > 0:
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, start_date, 
+               end_date, figure):
+    if n_clicks > 0:    
         weights_dict = {
             'CountryName': ['Mexico'],
             'RegionName': [""],
@@ -314,10 +250,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "legendgroup": "group_{}".format(n_clicks),
                      "showlegend": display_legend
                     }
-            prediction_traces.append(trace)
-            # fig_predictions.add_trace(go.Scatter(x=idf["Date"], y=idf["PredictedDailyNewCases"],
-            #                 mode='lines',line=dict(color=DEFAULT_COLORS[1])))
-
+            prediction_traces.append(trace) 
         return ([new_trace, []], []), (([prediction_traces, []], []))
     return ([],[],[]), ([],[],[])
 
@@ -339,8 +272,8 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                [dash.dependencies.State('radar-plot', 'figure')]
               )
 def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, figure):
-    if n_clicks > 0:
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, figure):
+    if n_clicks > 0:    
         weights_dict = {
             'C1': value_c1,
             'C2': value_c2,
