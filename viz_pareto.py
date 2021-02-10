@@ -176,7 +176,7 @@ app.layout = dbc.Container(
                             figure=go.Figure(dict(
                                 data=[radar_data],
                                 layout={
-                                        "legend": {"yanchor": "bottom", "y": 0.1, "x": -1},
+                                        "legend": {"yanchor": "bottom", "y": 0.1, "x": -1.2},
                                         }                                
                             ))
                     ), width={"size": 4, "offset": 1},
