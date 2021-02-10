@@ -24,35 +24,42 @@ TEMPLATE = 'plotly_dark'
 
 START_DATE = "2020-08-01"
 END_DATE = "2020-09-01"
-TEST_COST = "covid_xprize/validation/data/uniform_random_costs.csv"
-COUNTRY = "Mexico"
-# Este escenario sólo trae a México, por eso sólo se modela ese geo. Esto tendría que cambiar
-IP_FILE = "prescriptions/robojudge_test_scenario.csv"
+TEST_COST = "covid_xprize/nixtamalai/viz_data/uniform_random_costs.csv"
+INITIAL_COUNTRY = "Mexico"
+IP_FILE = "covid_xprize/nixtamalai/viz_data/scenario_all_countries_no_regions.csv"
 DEFAULT_COLORS = px.colors.qualitative.Plotly
 logo_filename = "./covid_xprize/nixtamalai/img/logo.jpeg"
 encoded_logo = base64.b64encode(open(logo_filename, 'rb').read())
+HIST_DF = pd.read_csv(IP_FILE,
+                        parse_dates=['Date'],
+                        encoding="ISO-8859-1",
+                        keep_default_na=False,
+                        error_bad_lines=True)
+HIST_DF = HIST_DF.replace("", np.NaN)
+ALL_COUNTRIES = [{"label":c, "value":c} for c in HIST_DF.CountryName.unique()] 
+print(ALL_COUNTRIES)
+WEIGHTS_DF = pd.read_csv(TEST_COST, keep_default_na=False)
+WEIGHTS_DF = WEIGHTS_DF.replace("", np.NaN)
 
-weights_df = pd.read_csv(TEST_COST, keep_default_na=False)
-# Filtro por el país "seleccionado"
-weights_df = weights_df[weights_df.CountryName == "Mexico"]
-overall_pdf, predictions = get_overall_data(START_DATE, END_DATE, IP_FILE, weights_df, "greedy")
+overall_pdf, predictions = get_overall_data(START_DATE, END_DATE, HIST_DF, WEIGHTS_DF,
+                                            INITIAL_COUNTRY, "greedy")
 # Gráfica inicial de Pareto
 pareto = get_pareto_data(list(overall_pdf['Stringency']),
                          list(overall_pdf['PredictedDailyNewCases']))
 pareto_data = {"x": pareto[0],
                "y": pareto[1],
-               "name": "Base (Blind Greedy)",
+               "name": "Base (Blind Greedy for Mexico)",
                "showlegend": True,
                }
-npis = (weights_df
-        .drop(columns=['CountryName', 'RegionName', 'GeoID'])
+npis = (WEIGHTS_DF
+        .drop(columns=['CountryName', 'RegionName'])
         .to_dict(orient='records'))[0]
 BASE_COSTS = npi_val_to_cost(npis)
 # Gráfica inicial de radar
 radar_data = {
     "r": [v for _,v in BASE_COSTS.items()],
     "theta": [k.split("_")[0] for k,_ in BASE_COSTS.items()],
-    "name": "Base (Blind Greedy)",
+    "name": "Base (Blind Greedy for Mexico)",
     'type': 'scatterpolar',
     "showlegend": True,
 }
@@ -115,7 +122,14 @@ app.layout =html.Div(
                             initial_visible_month=date(2020, 8, 1),
                             start_date=date(2020, 8, 1),
                             end_date=date(2020, 9, 1)
-                        ))                       
+                        )),
+                        html.Hr(),
+                        html.Div(dcc.Dropdown(
+                            id='country-selector',
+                            options=ALL_COUNTRIES,
+                            style={'color': 'black'},
+                            value=INITIAL_COUNTRY
+                        ))                                               
                     ],
                         
                     width=2),
@@ -168,7 +182,7 @@ app.layout =html.Div(
                             layout={
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
-                                    "legend": {"yanchor": "top", "y": 0.99, "x": 0.5},
+                                    "legend": {"yanchor": "top", "y": 0.99, "x": 0.35},
                                     "template": TEMPLATE
                                     }
                         ))
@@ -202,16 +216,17 @@ app.layout =html.Div(
                [dash.dependencies.State('H3-weight', 'value')],
                [dash.dependencies.State('H4-weight', 'value')],
                [dash.dependencies.State('model-selector', 'value')],
+               [dash.dependencies.State('country-selector', 'value')],
                [dash.dependencies.State('date-range', 'start_date')],
                [dash.dependencies.State('date-range', 'end_date')],
                [dash.dependencies.State('pareto-plot', 'figure')]
               )
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, start_date, 
-               end_date, figure):
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, country, 
+               start_date, end_date, figure):
     if n_clicks > 0:    
         weights_dict = {
-            'CountryName': ['Mexico'],
+            'CountryName': [country],
             'RegionName': [""],
             'C1_School closing': [value_c1],
             'C2_Workplace closing': [value_c2],
@@ -231,12 +246,14 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
         weights_dict = npi_cost_to_val(weights_dict)
         user_weights = pd.DataFrame.from_dict(weights_dict)
         overall_pdf, predictions = get_overall_data(
-            start_date, end_date, IP_FILE, user_weights, model)
+            start_date, end_date, HIST_DF, user_weights, country, model)
         pareto = get_pareto_data(list(overall_pdf['Stringency']),
                                  list(overall_pdf['PredictedDailyNewCases']))
         new_trace = {"x": pareto[0],
                      "y": pareto[1],
-                     "name": "{} prescription {}".format(prescriptor_names[model], n_clicks)}
+                    "name": "{} prescription {} for {}".format(prescriptor_names[model],
+                                        n_clicks, country)
+                    }
         predictions = pd.concat(predictions)
         prediction_traces = []
         for idx in predictions.PrescriptionIndex.unique():
@@ -246,7 +263,8 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "y": idf["PredictedDailyNewCases"],
                      "mode": "lines",
                      "line": dict(color=DEFAULT_COLORS[n_clicks]),
-                     "name": "{} prescription {}".format(prescriptor_names[model], n_clicks),
+                     "name": "{} prescription {} for {}".format(prescriptor_names[model],
+                                                                n_clicks, country),
                      "legendgroup": "group_{}".format(n_clicks),
                      "showlegend": display_legend
                     }
@@ -269,10 +287,11 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                [dash.dependencies.State('H3-weight', 'value')],
                [dash.dependencies.State('H4-weight', 'value')],
                [dash.dependencies.State('model-selector', 'value')],
+               [dash.dependencies.State('country-selector', 'value')],
                [dash.dependencies.State('radar-plot', 'figure')]
               )
 def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
-               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, figure):
+               value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, country, figure):
     if n_clicks > 0:    
         weights_dict = {
             'C1': value_c1,
@@ -294,7 +313,8 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
             "r": [v for _,v in weights_dict.items()],
             "theta": [k for k,_ in weights_dict.items()],
             'type': 'scatterpolar',
-            "name": "{} prescription {}".format(prescriptor_names[model], n_clicks)
+            "name": "{} prescription {} for {}".format(prescriptor_names[model],
+                                                                n_clicks, country),
         }
         return [new_trace, []], []
 

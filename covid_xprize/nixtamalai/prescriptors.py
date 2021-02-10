@@ -30,16 +30,16 @@ IP_COLS = list(IP_MAX_VALUES.keys())
 
 def get_greedy_prescription_df(start_date_str: str,
               end_date_str: str,
-              path_to_hist_file: str,
+              hist_df: pd.DataFrame,
               weights_df: pd.DataFrame) -> pd.DataFrame:
 
     # Load historical IPs, just to extract the geos
     # we need to prescribe for.
-    hist_df = pd.read_csv(path_to_hist_file,
-                          parse_dates=['Date'],
-                          encoding="ISO-8859-1",
-                          keep_default_na=False,
-                          error_bad_lines=True)
+    # hist_df = pd.read_csv(path_to_hist_file,
+    #                       parse_dates=['Date'],
+    #                       encoding="ISO-8859-1",
+    #                       keep_default_na=False,
+    #                       error_bad_lines=True)
 
     # Generate prescriptions
     start_date = pd.to_datetime(start_date_str, format='%Y-%m-%d')
@@ -52,14 +52,16 @@ def get_greedy_prescription_df(start_date_str: str,
     }
     for ip in IP_COLS:
         prescription_dict[ip] = []
-
     for country_name in hist_df['CountryName'].unique():
         country_df = hist_df[hist_df['CountryName'] == country_name]
+        #print(country_df)
         for region_name in country_df['RegionName'].unique():
-
             # Sort IPs for this geo by weight
-            geo_weights_df = weights_df[(weights_df['CountryName'] == country_name) &
-                                        (weights_df['RegionName'] == region_name)][IP_COLS]
+            if isinstance(region_name, float):
+                geo_weights_df = weights_df[(weights_df['CountryName'] == country_name)][IP_COLS]
+            else:    
+                geo_weights_df = weights_df[(weights_df['CountryName'] == country_name) &
+                                            (weights_df['RegionName'] == region_name)][IP_COLS]
             ip_names = list(geo_weights_df.columns)
             ip_weights = geo_weights_df.values[0]
             sorted_ips = [ip for _, ip in sorted(zip(ip_weights, ip_names))]

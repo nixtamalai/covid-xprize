@@ -69,11 +69,13 @@ def get_pareto_data(objective1_list, objective2_list):
     # return px.line(df, x="Stringency", y='PredictedDailyNewCases', color_discrete_sequence=[color])
     return xs, ys
 
-def get_overall_data(start_date, end_date, ip_file, weights_df, model):
+def get_overall_data(start_date, end_date, hist_df, weights_df, country, model):
+    weights_df = weights_df[weights_df.CountryName == country]
+    hist_df = hist_df[hist_df.CountryName == country]
     if model == "nixtamal":
-        prescription_df = surrogate_model.prescribe(start_date, end_date, ip_file, weights_df)
+        prescription_df = surrogate_model.prescribe(start_date, end_date, hist_df, weights_df)
     else:
-        prescription_df = get_greedy_prescription_df(start_date, end_date, ip_file, weights_df)
+        prescription_df = get_greedy_prescription_df(start_date, end_date, hist_df, weights_df)
     df, predictions = generate_cases_and_stringency_for_prescriptions(start_date,
                                                             end_date,
                                                             prescription_df,
