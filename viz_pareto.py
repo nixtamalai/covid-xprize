@@ -182,7 +182,9 @@ app.layout = dbc.Container(
                     ), width={"size": 4, "offset": 1},
                 ),
                 dbc.Col(
-                    deg.ExtendableGraph(
+                    dcc.Loading(
+                        id="loading-pareto",
+                        children=[deg.ExtendableGraph(
                         id='pareto-plot',
                         figure=go.Figure(dict(
                             data=[pareto_data],
@@ -192,13 +194,18 @@ app.layout = dbc.Container(
                                     "legend": {"yanchor": "top", "y": 0.99, "x": 0.35},
                                     }
                         ))
-                    ), width={"size": 6},
+                    )]), width={"size": 6},
                 ),
             ],
             align="center",
         ),
         dbc.Row(dbc.Col(
-            dcc.Graph(id='predictions-graphs', figure=fig))
+            dcc.Loading(
+                id="loadig-predictions",
+                children=[dcc.Graph(id='predictions-graphs', figure=fig)]
+            )
+
+        )
         ),
         dbc.Row(dbc.Col(
             data_table, width="auto"),
