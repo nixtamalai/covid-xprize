@@ -107,7 +107,6 @@ app.layout = dbc.Container(
                 dbc.Col(html.Div(sliders[9:12]), width=2),
                 dbc.Col(
                     [
-                        html.Hr(),
                         html.Div(dcc.Dropdown(
                             id='model-selector',
                             options=[
@@ -138,7 +137,6 @@ app.layout = dbc.Container(
                     width=2),
                 dbc.Col(
                     [
-                        html.Hr(),
                         html.Div(dbc.Button('Submit', id='submit-val',color="success",
                           n_clicks=0, block=True)),
                         html.Hr(),
@@ -153,28 +151,43 @@ app.layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(
+                    html.Div(html.H4("NPI Weights"), style={
+                             'text-align': 'center'}),
+                    width={"size": 4, "offset": 1},
+                ),
+                dbc.Col(
+                    html.Div(html.H4("Pareto Plot"), style={
+                             'text-align': 'center'}),
+                    width={"size": 6},
+                ),
+            ],
+            align="center",
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
                     deg.ExtendableGraph(
                             id='radar-plot',
                             figure=go.Figure(dict(
                                 data=[radar_data],
-                                layout={"title": {"text": "NPI Weights"},
-                                        }
+                                layout={
+                                        "legend": {"yanchor": "bottom", "y": 0.1, "x": -1},
+                                        }                                
                             ))
-                    ), width=4
+                    ), width={"size": 4, "offset": 1},
                 ),
                 dbc.Col(
                     deg.ExtendableGraph(
                         id='pareto-plot',
                         figure=go.Figure(dict(
                             data=[pareto_data],
-                            layout={"title": {"text": "Pareto Plot"},
+                            layout={
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
                                     "legend": {"yanchor": "top", "y": 0.99, "x": 0.35},
-                                    #"template": TEMPLATE
                                     }
                         ))
-                    ), width=8
+                    ), width={"size": 6},
                 ),
             ],
             align="center",
