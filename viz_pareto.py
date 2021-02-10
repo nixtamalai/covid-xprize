@@ -81,6 +81,7 @@ data_table = dash_table.DataTable(
     id='table',
     columns=[{"name": i, "id": i} for i in predictions.columns],
     data=predictions.to_dict('records'),
+    data_previous=[dict()],
     export_format='xlsx',
     export_headers='display',
     page_size=10,
@@ -206,7 +207,7 @@ app.layout = dbc.Container(
 )
 
 @app.callback([dash.dependencies.Output('pareto-plot', 'extendData'),
-               dash.dependencies.Output('table', 'predictions')],
+               dash.dependencies.Output('table', 'data_previous')],
                [dash.dependencies.Input('submit-val', 'n_clicks')],
                [dash.dependencies.State('C1-weight', 'value')],
                [dash.dependencies.State('C2-weight', 'value')],
@@ -346,7 +347,7 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
 
 @app.callback(dash.dependencies.Output('table', 'data'),
               [dash.dependencies.Input('submit-val', 'n_clicks'),
-               dash.dependencies.Input('table', 'predictions'),
+               dash.dependencies.Input('table', 'data_previous'),
                dash.dependencies.Input('table', 'data')],
               [dash.dependencies.State('date-range', 'start_date')],
               [dash.dependencies.State('date-range', 'end_date')]
