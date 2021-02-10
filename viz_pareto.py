@@ -18,8 +18,9 @@ from covid_xprize.nixtamalai.viz_components import get_overall_data
 from covid_xprize.nixtamalai.viz_components import npi_cost_to_val
 from covid_xprize.nixtamalai.viz_components import get_sliders
 import palettable as pltt
+import dash_table
 
-TEMPLATE = 'plotly_dark'
+# TEMPLATE = 'plotly_dark'
 
 
 START_DATE = "2020-08-01"
@@ -37,7 +38,6 @@ HIST_DF = pd.read_csv(IP_FILE,
                         error_bad_lines=True)
 HIST_DF = HIST_DF.replace("", np.NaN)
 ALL_COUNTRIES = [{"label":c, "value":c} for c in HIST_DF.CountryName.unique()] 
-print(ALL_COUNTRIES)
 WEIGHTS_DF = pd.read_csv(TEST_COST, keep_default_na=False)
 WEIGHTS_DF = WEIGHTS_DF.replace("", np.NaN)
 
@@ -63,35 +63,38 @@ radar_data = {
     'type': 'scatterpolar',
     "showlegend": True,
 }
+
 # Gráfica inicial  de predicciones
 predictions = pd.concat(predictions)
-fig_predictions = go.Figure(layout={ 
-                            "xaxis": {"title": "Date"},
-                            "yaxis": {"title": "New Cases per Day"},
-                            "legend": {"yanchor": "top", "y": 0.99, "x": 0.05},
-                            "template": TEMPLATE
-                            })
-for idx in predictions.PrescriptionIndex.unique():
-    display_legend = True if idx == 0 else False
-    idf = predictions[predictions.PrescriptionIndex == idx]
-    fig_predictions.add_trace(
-        go.Scatter(
-            x=idf["Date"],
-            y=idf["PredictedDailyNewCases"],
-            mode='lines', line=dict(color=DEFAULT_COLORS[0]),
-            name="Base (Blind Greedy)",
-            legendgroup="group_0",
-            showlegend=display_legend
-        )
-    )
+predictions['Prescriptor'] = 0
+
+fig = px.line(predictions,
+    facet_col="Prescriptor",
+    color="Prescriptor",
+    line_group="PrescriptionIndex",
+    x="Date",
+    y="PredictedDailyNewCases",
+    facet_col_wrap=3)
+
+data_table = dash_table.DataTable(
+    id='table',
+    columns=[{"name": i, "id": i} for i in predictions.columns],
+    data=predictions.to_dict('records'),
+    export_format='xlsx',
+    export_headers='display',
+    page_size=10,
+    sort_action='native'
+)
 
 sliders = get_sliders(BASE_COSTS)
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app = dash.Dash(__name__,
+    external_stylesheets=[dbc.themes.FLATLY],
+    prevent_initial_callbacks=True)
 
-app.layout =html.Div(
+app.layout = dbc.Container(
     [
         dbc.Row(
-            [dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_logo.decode()), 
+            [dbc.Col(html.Img(src='data:image/png;base64,{}'.format(encoded_logo.decode()),
                      height="100px",style={'padding-left': '30px'}), width=1),
             dbc.Col(html.Div(html.H1(children='Visualizing Intervention Plans')))]
             ),
@@ -131,7 +134,7 @@ app.layout =html.Div(
                             value=INITIAL_COUNTRY
                         ))                                               
                     ],
-                        
+
                     width=2),
                 dbc.Col(
                     [
@@ -139,29 +142,14 @@ app.layout =html.Div(
                         html.Div(dbc.Button('Submit', id='submit-val',color="success",
                           n_clicks=0, block=True)),
                         html.Hr(),
-                        html.Div(dbc.Button('Reset', id='reset-val', color="warning", 
+                        html.Div(dbc.Button('Reset', id='reset-val', color="warning",
                         href='/', n_clicks=0, block=True))
-                        
                     ],
-                        
+
                     width=1),
             ], style={'padding-left': '30px'}
         ),
         html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(
-                    html.Div(html.H4("NPI Weights"),style={'text-align': 'center'})
-                    ),               
-                dbc.Col(
-                    html.Div(html.H4("Pareto Plot"),style={'text-align': 'center'})
-                    ),
-                dbc.Col(
-                    html.Div(html.H4("Predictions"),style={'text-align': 'center'})
-                    ),
-            ],
-            justify="center", align="center"
-        ),
         dbc.Row(
             [
                 dbc.Col(
@@ -170,7 +158,7 @@ app.layout =html.Div(
                             figure=go.Figure(dict(
                                 data=[radar_data],
                                 layout={"title": {"text": "NPI Weights"},
-                                        "template": TEMPLATE}
+                                        }
                             ))
                     ), width=4
                 ),
@@ -179,29 +167,29 @@ app.layout =html.Div(
                         id='pareto-plot',
                         figure=go.Figure(dict(
                             data=[pareto_data],
-                            layout={
+                            layout={"title": {"text": "Pareto Plot"},
                                     "xaxis": {"title": "Mean Stringency"},
                                     "yaxis": {"title": "Mean New Cases per Day"},
                                     "legend": {"yanchor": "top", "y": 0.99, "x": 0.35},
-                                    "template": TEMPLATE
+                                    #"template": TEMPLATE
                                     }
                         ))
-                    ), width=4
+                    ), width=8
                 ),
-                dbc.Col(
-                    deg.ExtendableGraph(
-                        id='predictions-plot',
-                        figure=fig_predictions
-                    ), width=4
-                )
             ],
             align="center",
         ),
-    ]
+        dbc.Row(dbc.Col(
+            dcc.Graph(id='predictions-graphs', figure=fig))
+        ),
+        dbc.Row(dbc.Col(
+            data_table, width="auto"),
+        align='center', justify="center"),
+    ], fluid=True
 )
 
 @app.callback([dash.dependencies.Output('pareto-plot', 'extendData'),
-               dash.dependencies.Output('predictions-plot', 'extendData')],
+               dash.dependencies.Output('table', 'predictions')],
                [dash.dependencies.Input('submit-val', 'n_clicks')],
                [dash.dependencies.State('C1-weight', 'value')],
                [dash.dependencies.State('C2-weight', 'value')],
@@ -220,7 +208,8 @@ app.layout =html.Div(
                [dash.dependencies.State('date-range', 'start_date')],
                [dash.dependencies.State('date-range', 'end_date')],
                [dash.dependencies.State('pareto-plot', 'figure')]
-              )
+            )
+
 def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5, value_c6,
                value_c7, value_c8, value_h1, value_h2, value_h3, value_h4, model, country, 
                start_date, end_date, figure):
@@ -255,6 +244,7 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                                         n_clicks, country)
                     }
         predictions = pd.concat(predictions)
+        predictions['Prescriptor'] = n_clicks
         prediction_traces = []
         for idx in predictions.PrescriptionIndex.unique():
             display_legend = True if idx == 0 else False
@@ -268,9 +258,10 @@ def update_pareto_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c
                      "legendgroup": "group_{}".format(n_clicks),
                      "showlegend": display_legend
                     }
-            prediction_traces.append(trace) 
-        return ([new_trace, []], []), (([prediction_traces, []], []))
-    return ([],[],[]), ([],[],[])
+            prediction_traces.append(trace)
+
+        return ([new_trace, []], []), predictions.to_dict('records')
+    return ([],[],[]), predictions.to_dict('records')
 
 @app.callback(dash.dependencies.Output('radar-plot', 'extendData'),
                [dash.dependencies.Input('submit-val', 'n_clicks')],
@@ -318,6 +309,55 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
         }
         return [new_trace, []], []
 
+# @app.callback(
+#     dash.dependencies.Output("pareto-plot", "figure"),
+#     [dash.dependencies.Input("pareto-plot", "hoverData")],
+#     [dash.dependencies.State('pareto-plot', 'figure')]
+# )
+# def highlight_trace(hover_data, figure):
+#     # here you set the default settings
+#     # for trace in my_pot.data:
+#     #     country["line"]["width"] = 1
+#     #     country["opacity"] = 0.5
+#     if hover_data:
+#         trace_index = hover_data["points"][0]["curveNumber"]
+#         print(figure["data"])
+#         # figure["data"][trace_index]["line"]["width"] = 5
+#         # figure["data"][trace_index]["opacity"] = 1
+#     return figure
+
+@app.callback(dash.dependencies.Output('table', 'data'),
+              [dash.dependencies.Input('submit-val', 'n_clicks'),
+                dash.dependencies.Input('table', 'predictions'),
+                dash.dependencies.Input('table', 'data')],
+              [dash.dependencies.State('date-range', 'start_date')],
+              [dash.dependencies.State('date-range', 'end_date')]
+              )
+def update_table(n_clicks, predictions, data, start_date, end_date):
+    predictions = pd.DataFrame.from_dict(predictions)
+    data = pd.DataFrame.from_dict(data)
+    data = data[(data.Date >= start_date) &
+                (data.Date < end_date)]
+
+    predictions = predictions[(predictions.Date >= start_date) &
+                              (predictions.Date < end_date)]
+    return data.append(predictions).to_dict('records')
+
+@app.callback(dash.dependencies.Output('predictions-graphs', 'figure'),
+              dash.dependencies.Input('table', 'data')
+              )
+def update_predictions_graphs(data):
+    predictions = pd.DataFrame.from_records(data)
+
+    fig = px.line(predictions,
+        facet_col="Prescriptor",
+        color="Prescriptor",
+        line_group="PrescriptionIndex",
+        x="Date",
+        y="PredictedDailyNewCases",
+        facet_col_wrap=3)
+
+    return fig
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8050)
+    app.run_server(debug=True, port=8050, host='0.0.0.0')
