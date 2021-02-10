@@ -326,10 +326,11 @@ def update_radar_plot(n_clicks, value_c1, value_c2, value_c3, value_c4, value_c5
 #         # figure["data"][trace_index]["opacity"] = 1
 #     return figure
 
+
 @app.callback(dash.dependencies.Output('table', 'data'),
               [dash.dependencies.Input('submit-val', 'n_clicks'),
-                dash.dependencies.Input('table', 'predictions'),
-                dash.dependencies.Input('table', 'data')],
+               dash.dependencies.Input('table', 'predictions'),
+               dash.dependencies.Input('table', 'data')],
               [dash.dependencies.State('date-range', 'start_date')],
               [dash.dependencies.State('date-range', 'end_date')]
               )
