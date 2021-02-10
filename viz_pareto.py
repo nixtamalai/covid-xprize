@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import dash
+import flask
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_extendable_graph as deg
@@ -87,9 +88,12 @@ data_table = dash_table.DataTable(
 )
 
 sliders = get_sliders(BASE_COSTS)
+
+server = flask.Flask(__name__) # define flask app.server
 app = dash.Dash(__name__,
     external_stylesheets=[dbc.themes.FLATLY],
-    prevent_initial_callbacks=True)
+    prevent_initial_callbacks=True,
+    server=server)
 
 app.layout = dbc.Container(
     [
